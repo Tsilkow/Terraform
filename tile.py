@@ -1,14 +1,25 @@
+import arcade
 from enum import Enum
+from typing import Callable
+
+
+HEX_WIDTH =        120 //2
+HEX_HEIGHT =       104 //2
+HEX_QUARTER =       30 //2
+HEX_OFFSET =        30 //2
+ALTITUDE_TO_Y =     10 //2
+ALTITUDE_SHADING =  10
+SPRITE_SCALE  =     0.5
 
 
 # Enumeration of possible terrain types of a tile
-class TerrainType(Enum):
-    Mountain = 1
-    Rough = 2
-    Sand = 3
-    Soil = 4
-    Water = 5
-    Ice = 6
+class TerrainType(object):
+    def __init__(self, name, sprite_filenames):
+        self.name = name
+        self.sprite_filenames = sprite_filenames
+
+    def __str__(self):
+        return self.name
 
 
 # Class for holding coordinates, in particular axial hexagonal coorindates with conversion to cube coordinates
@@ -20,20 +31,77 @@ class Coords(object):
     def __repr__(self):
         return f'({self.r} {self.q} {self.z()})'
 
+    def __eq__(self, other):
+        return self.r == other.r and self.q == other.q
+
+    def __hash__(self):
+        return hash((self.r, self.q))
+
+    def __add__(self, other):
+        return Coords(self.r + other.r, self.q + other.q)
+    
+    def __mul__(self, other: int):
+        return Coords(self.r * other, self.r * other)
+
     # Axial cooridnates
     def rq(self): return (self.r, self.q)
-    # Cube coordinates
+    # Cube coords
     def xyz(self): return (self.r, self.q, self.z())
     def x(self): return self.r
     def y(self): return self.q
     def z(self): return -self.r -self.q
     # Value representing what's closer to the screen
-    def priority(self): return 2*self.q + self.r
+    def priority(self): return 2*self.q +self.r
     
+    def neighbour(self, dir):
+        return self + direction(dir)
+        
+    def neighbours(self):
+        return [self + direction(i) for i in range(6)]
+        
+
+def direction(dir: int):
+    if   dir == 0: return Coords( 0, -1)
+    elif dir == 1: return Coords(+1, -1)
+    elif dir == 2: return Coords(+1,  0)
+    elif dir == 3: return Coords( 0, +1)
+    elif dir == 4: return Coords(-1, +1)
+    elif dir == 5: return Coords(-1,  0)
+    else:          return Coords( 0,  0)
+        
+
+def hexagonal_loop(start: Coords, radius: int, function: Callable, use_memory: bool=False, pass_memory: bool=False):
+    assert radius >= 0
+    memory = []
+
+    def action(curr, memory, loop_coords):
+        if use_memory:
+            if pass_memory: memory.append(function(curr, loop_coords, memory))
+            else: memory.append(function(curr, loop_coords))
+        else: function(curr, loop_coords)
+        return memory
+    
+    curr = start
+    memory = action(curr, memory, (0, 0, 0))
+    for r in range(1, radius+1):
+        curr = curr.neighbour(4)
+        for side in range(6):
+            for step in range(r):
+                memory = action(curr, memory, (r, side, step))
+                curr = curr.neighbour(side)
+
+    if use_memory: return memory
+
+def tile_list_to_tile_dict(tile_list: list):
+    tile_dict = dict()
+    for tile in tile_list:
+        tile_dict[tile.coords] = tile
+
+    return tile_dict
 
 class Tile(object):
-    def __init__(self, coordinates: Coords, terrain: TerrainType, altitude):
-        self.coordinates = coordinates
+    def __init__(self, coords: Coords, terrain: TerrainType, altitude=0):
+        self.coords = coords
         self.terrain = terrain
         self.altitude = altitude
         self.building = None
@@ -45,11 +113,17 @@ class Tile(object):
         self.silica = False
         self.gold = False
 
+    def setup(self):
+        self.sprite = arcade.Sprite(self.terrain.sprite_filenames, SPRITE_SCALE)
+        self.sprite.color = [int(round(255 + (self.altitude-5)*ALTITUDE_SHADING)) for _ in range(3)]
+        self.sprite.center_x, self.sprite.center_y = self.center_pixel()
+        self.sprite.center_y -= HEX_OFFSET//2
+
     def __str__(self):
-        return f'{self.terrain} at {self.coorindates}'
+        return f'{self.terrain} at {self.coords}'
 
     def __repr__(self):
-        return f'{self.coordinates}: {self.terrain} | '\
+        return f'{self.coords}: {self.terrain} | '\
         f'{self.owner.name if self.owner is not None else "abandoned"} | '\
         f'{self.building if self.building is not None else ""}'\
         f'{"tunneled " if self.tunnels else ""}'\
@@ -58,3 +132,9 @@ class Tile(object):
         f'{"Ore deposits " if self.ore else ""}'\
         f'{"Silica deposits " if self.silica else ""}'\
         f'{"Gold deposists " if self.gold else ""}'
+    
+    def center_pixel(self):
+        x = int(round((HEX_WIDTH - HEX_QUARTER) * self.coords.x()))
+        y = int(round(HEX_HEIGHT * (self.coords.z() - self.coords.y())/2) +
+                self.altitude*ALTITUDE_TO_Y)
+        return x, y
