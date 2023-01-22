@@ -44,7 +44,7 @@ class Game(arcade.Window):
             'ice'  : TerrainType('Ice'  , PATH_TO_ASSETS+'terrain_ice.png'  )
             }
 
-        self.world_generator = StandardGenerator(213702, self.terrain_types)
+        self.world_generator = StandardGenerator(2137, self.terrain_types)
         self.tiles = self.world_generator()
         #self.tiles = [Tile(Coords(0, 0), self.terrain_types['rocky'], 0),
         #              Tile(direction(0), self.terrain_types['rough'], 0),

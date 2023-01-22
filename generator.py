@@ -1,6 +1,6 @@
 import numpy as np
 from tile import *
-from perlin2d import generate_fractal_noise_2d
+import opensimplex
 
 
 ALTITUDE_DENSITY = 5
@@ -18,11 +18,10 @@ class WorldGenerator(object):
 class StandardGenerator(WorldGenerator):
     def __init__(self, seed, terrain_types):
         super().__init__(seed, terrain_types)
-        self.radius = 40
+        self.radius = 100
         self.altitude_range = (-5, 5)
-        self.altitude_noise_amplitude = 5
-        self.altitude_density = 20
-        self.altitude_noise_octaves = 4
+        self.altitude_noise_amplitude = 3
+        self.altitude_density = 10
         self.altitude_max_difference = 3
 
     def __call__(self):
@@ -46,18 +45,16 @@ class StandardGenerator(WorldGenerator):
 
     # generate altitude from perlin noise and apply it to existing hexagons
     def generate_altitude_from_noise(self, result):
-        np.random.seed(self.seed)
         diameter = 2*self.radius+1
-        noise_scale = 2**(self.altitude_noise_octaves-1)
-        periods = int(np.ceil(diameter/self.altitude_density))*2
-        print((periods*self.altitude_density*noise_scale,)*2, (periods,)*2)
-        altitude_noise = generate_fractal_noise_2d(
-            (periods*self.altitude_density*noise_scale,)*2,
-            (periods,)*2, self.altitude_noise_octaves, tileable=(True, True))
+        opensimplex.seed(self.seed)
 
         for tile in result.values():
             tile.altitude = int(round(
-                np.clip(altitude_noise[self.coords_to_position(tile.coords, noise_scale)], -1, 1)
+                np.clip(
+                    opensimplex.noise2(
+                        *self.coords_to_position(
+                            tile.coords, self.altitude_density/diameter))
+                    , -1, 1)
                 * self.altitude_noise_amplitude))
 
         while(self.find_eccentricites(result, self.altitude_max_difference)): pass
@@ -77,14 +74,13 @@ class StandardGenerator(WorldGenerator):
         return result
 
     @staticmethod
-    def coords_to_position(coords: Coords, noise_scale):
-        x = coords.x() * 2*noise_scale
-        y = coords.z() - coords.y()*2*noise_scale
+    def coords_to_position(coords: Coords, scale):
+        x = coords.x()*2 * scale 
+        y = (coords.z()-coords.y()) * scale
         return x, y
     
     @staticmethod
     def level_eccentricities(a: Tile, b: Tile, max_difference):
-        print(a.altitude, b.altitude)
         if abs(a.altitude) >= abs(b.altitude):
             eccentricity = a
             other = b
@@ -93,7 +89,6 @@ class StandardGenerator(WorldGenerator):
             other = a
 
         diff = eccentricity.altitude - other.altitude
-        print(eccentricity.coords, diff)
         if diff > 0: eccentricity.altitude -= abs(diff) - max_difference
         else: eccentricity.altitude += abs(diff) - max_difference
 

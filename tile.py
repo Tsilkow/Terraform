@@ -3,13 +3,13 @@ from enum import Enum
 from typing import Callable
 
 
-HEX_WIDTH =        120 //2
-HEX_HEIGHT =       104 //2
-HEX_QUARTER =       30 //2
-HEX_OFFSET =        30 //2
-ALTITUDE_TO_Y =     10 //2
+HEX_WIDTH =        120 //10#2
+HEX_HEIGHT =       104 //10#2
+HEX_QUARTER =       30 //10#2
+HEX_OFFSET =        30 //10#2
+ALTITUDE_TO_Y =     10 //10#2
 ALTITUDE_SHADING =  10
-SPRITE_SCALE  =     0.5
+SPRITE_SCALE  =     0.5/5
 
 
 # Enumeration of possible terrain types of a tile
