@@ -4,13 +4,13 @@ from typing import Callable
 from itertools import product
 
 
-HEX_WIDTH =        120 //2
-HEX_HEIGHT =       104 //2
-HEX_QUARTER =       30 //2
-HEX_OFFSET =        30 //2
-ALTITUDE_TO_Y =     10 //2
-ALTITUDE_SHADING =  10
-SPRITE_SCALE  =     0.5
+HEX_WIDTH = 120
+HEX_HEIGHT = 104
+HEX_QUARTER = 30
+HEX_OFFSET = 30
+ALTITUDE_TO_Y = 10
+ALTITUDE_SHADING = 10
+SPRITE_SCALES = [0.25, 0.5, 1.0]
 
 
 # Enumeration of possible terrain types of a tile
@@ -137,15 +137,15 @@ class Tile(object):
         self.silica = False
         self.gold = False
 
+        self.sprites = [None]*len(SPRITE_SCALES)
+
     def setup(self):
-        self.sprite = \
-            arcade.Sprite(self.terrain.sprite_filenames, SPRITE_SCALE)
-        self.sprite.color = \
-            [int(round(255 + (self.altitude-5)*ALTITUDE_SHADING))
-             for _ in range(3)]
-        self.sprite.center_x, self.sprite.center_y = \
-            self.center_pixel()
-        self.sprite.center_y -= HEX_OFFSET//2
+        for i, scale in enumerate(SPRITE_SCALES):
+            self.sprites[i] = arcade.Sprite(self.terrain.sprite_filenames, scale)
+            self.sprites[i].color = [int(round(255 + (self.altitude-5)*(ALTITUDE_SHADING)))
+                                     for _ in range(3)]
+            self.sprites[i].center_x, self.sprites[i].center_y = self.center_pixel(scale)
+            self.sprites[i].center_y -= HEX_OFFSET//2*scale
 
     def __str__(self):
         return f'{self.terrain} at {self.coords}'
@@ -161,9 +161,9 @@ class Tile(object):
         f'{"Silica deposits " if self.silica else ""}'\
         f'{"Gold deposists " if self.gold else ""}'
     
-    def center_pixel(self):
+    def center_pixel(self, scale):
         center = self.coords.center()
-        x = int(round((HEX_WIDTH - HEX_QUARTER) * center[0]/2))
-        y = int(round(HEX_HEIGHT * center[1]/2)
-                + self.altitude*ALTITUDE_TO_Y)
+        x = int(round((HEX_WIDTH - HEX_QUARTER)*scale * center[0]/2))
+        y = int(round(HEX_HEIGHT*scale * center[1]/2)
+                + self.altitude*ALTITUDE_TO_Y*scale)
         return x, y

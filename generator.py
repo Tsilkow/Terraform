@@ -49,8 +49,7 @@ class StandardGenerator(WorldGenerator):
             return Tile(coords, self.terrain_types['sand'])
         
         return tile_list_to_tile_dict(
-            hexagonal_loop(Coords(0, 0), self.radius,
-                           base_tile_constructor, True))
+            hexagonal_loop(Coords(0, 0), self.radius,base_tile_constructor, True))
 
     def generate_altitude_from_noise(self, result):
         '''
@@ -60,15 +59,11 @@ class StandardGenerator(WorldGenerator):
         opensimplex.seed(self.seed)
 
         for tile in result.values():
-            samples = [c*self.altitude_density
-                       for c in tile.coords.center()]
-            noise = np.clip(opensimplex.noise2(samples), -1, 1)
-            tile.altitude = int(round(
-                noise * self.altitude_noise_amplitude))
+            samples = [c*self.altitude_density for c in tile.coords.center()]
+            noise = np.clip(opensimplex.noise2(*samples), -1, 1)
+            tile.altitude = int(round(noise * self.altitude_noise_amplitude))
 
-        while(self.find_eccentricites(
-                result, self.altitude_max_difference)):
-            pass
+        while(self.find_eccentricites(result, self.altitude_max_difference)): pass
                         
         for tile in result.values():
             for n in [result[coords]
@@ -98,9 +93,7 @@ class StandardGenerator(WorldGenerator):
         start, end = None, None
         while start is None or end is None:
             start = random.choice(list(result))
-            if (result[start].terrain != 'rocky'
-               and start not in mountain_occupied):
-                continue
+            if (start in mountain_occupied): continue
             
             candidates = hexagonal_loop(
                 start, self.mountain_ridge_length_range[1],
