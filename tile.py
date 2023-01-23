@@ -52,6 +52,11 @@ class Coords(object):
     def z(self): return -self.r -self.q
     # Value representing what's closer to the screen
     def priority(self): return 2*self.q +self.r
+    # Position of center of hex using carthesian axis; center of the hex if it was a 2x2 square
+    def center(self):
+        x = self.x()*2
+        y = self.z()-self.y()
+        return x, y
     
     def neighbour(self, dir):
         return self + direction(dir)
@@ -68,6 +73,14 @@ def direction(dir: int):
     elif dir == 4: return Coords(-1, +1)
     elif dir == 5: return Coords(-1,  0)
     else:          return Coords( 0,  0)
+
+
+def center_to_coords(x: int, y: int):
+    return Coords(x//2, -y//2 - x//4)
+    
+    
+def distance(a: Coords, b: Coords):
+    return max(abs(a.x()-b.x()), abs(a.y()-b.y()), abs(a.z()-b.z()))
         
 
 def hexagonal_loop(start: Coords, radius: int, function: Callable, use_memory: bool=False, pass_memory: bool=False):
@@ -134,7 +147,7 @@ class Tile(object):
         f'{"Gold deposists " if self.gold else ""}'
     
     def center_pixel(self):
-        x = int(round((HEX_WIDTH - HEX_QUARTER) * self.coords.x()))
-        y = int(round(HEX_HEIGHT * (self.coords.z() - self.coords.y())/2) +
-                self.altitude*ALTITUDE_TO_Y)
+        center = self.coords.center()
+        x = int(round((HEX_WIDTH - HEX_QUARTER) * center[0]/2))
+        y = int(round(HEX_HEIGHT * center[1]/2) + self.altitude*ALTITUDE_TO_Y)
         return x, y
