@@ -8,7 +8,7 @@ from building import *
 from generator import *
 
 
-RESOLUTION = (1920, 1080)
+RESOLUTION = (1200, 800)
 SCREEN_TITLE = 'Terraform'
 PATH_TO_ASSETS = 'assets/'
 CAMERA_SPEED = 10
@@ -36,22 +36,31 @@ class Game(arcade.Window):
         
     def setup(self):
         self.terrain_types = {
-            'rocky': TerrainType('Rocky', PATH_TO_ASSETS+'terrain_rocky.png'),
-            'rough': TerrainType('Rough', PATH_TO_ASSETS+'terrain_rough.png'),
-            'sand' : TerrainType('Sand' , PATH_TO_ASSETS+'terrain_sand.png' ),
-            'soil' : TerrainType('Soil' , PATH_TO_ASSETS+'terrain_soil.png' ),
-            'water': TerrainType('Water', PATH_TO_ASSETS+'terrain_water.png'),
-            'ice'  : TerrainType('Ice'  , PATH_TO_ASSETS+'terrain_ice.png'  )
+            'rocky': TerrainType('Rocky',
+                                 PATH_TO_ASSETS+'terrain_rocky.png'),
+            'rough': TerrainType('Rough',
+                                 PATH_TO_ASSETS+'terrain_rough.png'),
+            'sand' : TerrainType('Sand' ,
+                                 PATH_TO_ASSETS+'terrain_sand.png' ),
+            'soil' : TerrainType('Soil' ,
+                                 PATH_TO_ASSETS+'terrain_soil.png' ),
+            'water': TerrainType('Water',
+                                 PATH_TO_ASSETS+'terrain_water.png'),
+            'ice'  : TerrainType('Ice'  ,
+                                 PATH_TO_ASSETS+'terrain_ice.png'  )
             }
 
-        self.world_generator = StandardGenerator(2137, self.terrain_types)
+        self.world_generator = StandardGenerator(
+            2137,
+            self.terrain_types)
         self.tiles = self.world_generator()
         #self.tiles = [Tile(Coords(0, 0), self.terrain_types['rocky'], 0),
         #              Tile(direction(0), self.terrain_types['rough'], 0),
         #              Tile(direction(2), self.terrain_types['sand'], 0),
         #              Tile(direction(4), self.terrain_types['soil'], 0)]
         self.tile_sprites = arcade.SpriteList()
-        for tile in sorted(self.tiles.values(), key=lambda t: t.coords.priority()):
+        for tile in sorted(self.tiles.values(),
+                           key=lambda t: t.coords.priority()):
             self.tile_sprites.append(tile.sprite)
 
     def on_draw(self):
@@ -118,6 +127,7 @@ class Game(arcade.Window):
         self.camera.move_to(position, 1)
 
         #self.camera.resize(RESOLUTION[0] * self.camera_zoom, RESOLUTION[1] * self.camera_zoom)
+
 
 def main():
     game = Game(RESOLUTION, SCREEN_TITLE)

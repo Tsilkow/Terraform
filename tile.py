@@ -1,15 +1,16 @@
 import arcade
 from enum import Enum
 from typing import Callable
+from itertools import product
 
 
-HEX_WIDTH =        120 //10#2
-HEX_HEIGHT =       104 //10#2
-HEX_QUARTER =       30 //10#2
-HEX_OFFSET =        30 //10#2
-ALTITUDE_TO_Y =     10 //10#2
+HEX_WIDTH =        120 //2
+HEX_HEIGHT =       104 //2
+HEX_QUARTER =       30 //2
+HEX_OFFSET =        30 //2
+ALTITUDE_TO_Y =     10 //2
 ALTITUDE_SHADING =  10
-SPRITE_SCALE  =     0.5/5
+SPRITE_SCALE  =     0.5
 
 
 # Enumeration of possible terrain types of a tile
@@ -22,8 +23,12 @@ class TerrainType(object):
         return self.name
 
 
-# Class for holding coordinates, in particular axial hexagonal coorindates with conversion to cube coordinates
+# 
 class Coords(object):
+    '''
+    Class for holding coordinates, in particular axial hexagonal 
+    coorindates with conversion to cube coordinates
+    '''
     def __init__(self, r: int, q: int):
         self.r = r
         self.q = q
@@ -52,7 +57,9 @@ class Coords(object):
     def z(self): return -self.r -self.q
     # Value representing what's closer to the screen
     def priority(self): return 2*self.q +self.r
-    # Position of center of hex using carthesian axis; center of the hex if it was a 2x2 square
+    
+    # Position of center of hex using carthesian axis;
+    # center of the hex if it was a 2x2 square
     def center(self):
         x = self.x()*2
         y = self.z()-self.y()
@@ -83,25 +90,28 @@ def distance(a: Coords, b: Coords):
     return max(abs(a.x()-b.x()), abs(a.y()-b.y()), abs(a.z()-b.z()))
         
 
-def hexagonal_loop(start: Coords, radius: int, function: Callable, use_memory: bool=False, pass_memory: bool=False):
+def hexagonal_loop(start: Coords, radius: int, function: Callable,
+                   use_memory: bool=False, pass_memory: bool=False):
     assert radius >= 0
     memory = []
 
     def action(curr, memory, loop_coords):
-        if use_memory:
-            if pass_memory: memory.append(function(curr, loop_coords, memory))
-            else: memory.append(function(curr, loop_coords))
-        else: function(curr, loop_coords)
+        if not use_memory:
+            function(curr, loop_coords)
+            return
+        
+        if pass_memory:
+            memory.append(function(curr, loop_coords, memory))
+        else: memory.append(function(curr, loop_coords))
         return memory
     
     curr = start
     memory = action(curr, memory, (0, 0, 0))
     for r in range(1, radius+1):
         curr = curr.neighbour(4)
-        for side in range(6):
-            for step in range(r):
-                memory = action(curr, memory, (r, side, step))
-                curr = curr.neighbour(side)
+        for side, step in product(range(6), range(r)):
+            memory = action(curr, memory, (r, side, step))
+            curr = curr.neighbour(side)
 
     if use_memory: return memory
 
@@ -113,7 +123,8 @@ def tile_list_to_tile_dict(tile_list: list):
     return tile_dict
 
 class Tile(object):
-    def __init__(self, coords: Coords, terrain: TerrainType, altitude=0):
+    def __init__(self, coords: Coords, terrain: TerrainType,
+                 altitude=0):
         self.coords = coords
         self.terrain = terrain
         self.altitude = altitude
@@ -127,9 +138,13 @@ class Tile(object):
         self.gold = False
 
     def setup(self):
-        self.sprite = arcade.Sprite(self.terrain.sprite_filenames, SPRITE_SCALE)
-        self.sprite.color = [int(round(255 + (self.altitude-5)*ALTITUDE_SHADING)) for _ in range(3)]
-        self.sprite.center_x, self.sprite.center_y = self.center_pixel()
+        self.sprite = \
+            arcade.Sprite(self.terrain.sprite_filenames, SPRITE_SCALE)
+        self.sprite.color = \
+            [int(round(255 + (self.altitude-5)*ALTITUDE_SHADING))
+             for _ in range(3)]
+        self.sprite.center_x, self.sprite.center_y = \
+            self.center_pixel()
         self.sprite.center_y -= HEX_OFFSET//2
 
     def __str__(self):
@@ -149,5 +164,6 @@ class Tile(object):
     def center_pixel(self):
         center = self.coords.center()
         x = int(round((HEX_WIDTH - HEX_QUARTER) * center[0]/2))
-        y = int(round(HEX_HEIGHT * center[1]/2) + self.altitude*ALTITUDE_TO_Y)
+        y = int(round(HEX_HEIGHT * center[1]/2)
+                + self.altitude*ALTITUDE_TO_Y)
         return x, y
