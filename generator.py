@@ -1,5 +1,6 @@
 import numpy as np
 from tile import *
+from terraform import *
 import opensimplex
 import random
 
@@ -8,9 +9,8 @@ ALTITUDE_DENSITY = 5
 
 
 class WorldGenerator(object):
-    def __init__(self, seed, terrain_types):
+    def __init__(self, seed):
         self.seed = seed
-        self.terrain_types = terrain_types
 
     def __call__(self):
         return None
@@ -20,8 +20,8 @@ class StandardGenerator(WorldGenerator):
     '''
     Standard world generator: hexagonal shape, mountain ridges
     '''
-    def __init__(self, seed, terrain_types):
-        super().__init__(seed, terrain_types)
+    def __init__(self, seed):
+        super().__init__(seed)
         self.radius = 100
         self.altitude_noise_amplitude = 2
         self.altitude_density = 0.1
@@ -35,6 +35,9 @@ class StandardGenerator(WorldGenerator):
 
     def __call__(self):
         print('Generating world map:')
+
+        terraform = Terraform()
+        print(terraform.configuration)
         
         result = self.initiate_hexagonal_shape()
         result = self.generate_altitude_from_noise(result)
@@ -61,7 +64,7 @@ class StandardGenerator(WorldGenerator):
         print('Initiating map ...', end='\r')
         
         def base_tile_constructor(coords: Coords, loop_coords):
-            return Tile(coords, self.terrain_types['sand'])
+            return Tile(coords, TERRAIN_TYPES['sand'])
         
         tiles = tile_list_to_tile_dict(
             hexagonal_loop(Coords(0, 0), self.radius,base_tile_constructor, True))
@@ -174,7 +177,7 @@ class StandardGenerator(WorldGenerator):
                      + [end])
             for coords in chain:
                 if coords in mountain_occupied: continue
-                tiles[coords].terrain = self.terrain_types['rocky']
+                tiles[coords].terrain = TERRAIN_TYPES['rocky']
                 tiles[coords].altitude += 3
                 mountain_occupied.add(coords)
         
@@ -198,7 +201,7 @@ class StandardGenerator(WorldGenerator):
         current = get_lower_adjacent(mountain_occupied)
         while len(current) > 0:
             for position in current:
-                tiles[position].terrain = self.terrain_types['rocky']
+                tiles[position].terrain = TERRAIN_TYPES['rocky']
                 tiles[position].altitude = current[position]
             current = get_lower_adjacent(list(current))
         
@@ -209,12 +212,12 @@ class StandardGenerator(WorldGenerator):
         print('Generating rough terrain ...', end='\r')
         
         tiles = self.radiate_terrain(
-            tiles, self.terrain_types['sand'], self.terrain_types['rough'],
-            self.terrain_types['rocky'], self.mountain_rough_radiation_probability)
+            tiles, TERRAIN_TYPES['sand'], TERRAIN_TYPES['rough'],
+            TERRAIN_TYPES['rocky'], self.mountain_rough_radiation_probability)
         for _ in range(self.rough_rough_radiation_repeats):
             tiles = self.radiate_terrain(
-                tiles, self.terrain_types['sand'], self.terrain_types['rough'],
-                self.terrain_types['rough'], self.rough_rough_radiation_probability)
+                tiles, TERRAIN_TYPES['sand'], TERRAIN_TYPES['rough'],
+                TERRAIN_TYPES['rough'], self.rough_rough_radiation_probability)
 
         print('Generating rough terrain [DONE]')
         return tiles

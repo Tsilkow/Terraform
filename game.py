@@ -11,7 +11,6 @@ from generator import *
 
 RESOLUTION = (1200, 800)
 SCREEN_TITLE = 'Terraform'
-PATH_TO_ASSETS = 'assets/'
 CAMERA_SPEED = 10
 CURSOR_SPEED = 5
 
@@ -47,23 +46,12 @@ class Game(arcade.Window):
         self.generator = None
         
     def setup(self):
-        self.terrain_types = {
-            'rocky': TerrainType('Rocky', PATH_TO_ASSETS+'terrain_rocky.png'),
-            'rough': TerrainType('Rough', PATH_TO_ASSETS+'terrain_rough.png'),
-            'sand' : TerrainType('Sand' , PATH_TO_ASSETS+'terrain_sand.png' ),
-            'soil' : TerrainType('Soil' , PATH_TO_ASSETS+'terrain_soil.png' ),
-            'water': TerrainType('Water', PATH_TO_ASSETS+'terrain_water.png'),
-            'ice'  : TerrainType('Ice'  , PATH_TO_ASSETS+'terrain_ice.png'  )
-            }
-
-        self.world_generator = StandardGenerator(
-            2137,
-            self.terrain_types)
+        self.world_generator = StandardGenerator(2137)
         self.tiles = self.world_generator()
-        #self.tiles = [Tile(Coords(0, 0), self.terrain_types['rocky'], 0),
-        #              Tile(direction(0), self.terrain_types['rough'], 0),
-        #              Tile(direction(2), self.terrain_types['sand'], 0),
-        #              Tile(direction(4), self.terrain_types['soil'], 0)]
+        #self.tiles = [Tile(Coords(0, 0), TERRAIN_TYPES['rocky'], 0),
+        #              Tile(direction(0), TERRAIN_TYPES['rough'], 0),
+        #              Tile(direction(2), TERRAIN_TYPES['sand'], 0),
+        #              Tile(direction(4), TERRAIN_TYPES['soil'], 0)]
         for i, scale in enumerate(SPRITE_SCALES):
             self.tile_sprites[i] = arcade.SpriteList()
             for tile in sorted(self.tiles.values(), key=lambda t: t.coords.priority()):

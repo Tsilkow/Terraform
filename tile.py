@@ -13,6 +13,8 @@ ALTITUDE_TO_Y = 10
 ALTITUDE_SHADING = 10
 SPRITE_SCALES = [0.25, 0.5, 1.0]
 
+PATH_TO_ASSETS = 'assets/'
+
 
 # Enumeration of possible terrain types of a tile
 class TerrainType(object):
@@ -23,6 +25,16 @@ class TerrainType(object):
     def __str__(self):
         return self.name
 
+    
+TERRAIN_TYPES = {
+    'rocky': TerrainType('Rocky', PATH_TO_ASSETS+'terrain_rocky.png'),
+    'rough': TerrainType('Rough', PATH_TO_ASSETS+'terrain_rough.png'),
+    'sand' : TerrainType('Sand' , PATH_TO_ASSETS+'terrain_sand.png' ),
+    'soil' : TerrainType('Soil' , PATH_TO_ASSETS+'terrain_soil.png' ),
+    'water': TerrainType('Water', PATH_TO_ASSETS+'terrain_water.png'),
+    'ice'  : TerrainType('Ice'  , PATH_TO_ASSETS+'terrain_ice.png'  )
+}
+    
 
 class Tile(object):
     def __init__(self, coords: Coords, terrain: TerrainType,
