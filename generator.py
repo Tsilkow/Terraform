@@ -23,66 +23,79 @@ class StandardGenerator(WorldGenerator):
     def __init__(self, seed, terrain_types):
         super().__init__(seed, terrain_types)
         self.radius = 100
-        self.altitude_noise_amplitude = 3
+        self.altitude_noise_amplitude = 2
         self.altitude_density = 0.1
         self.altitude_max_difference = 3
         self.mountain_ridge_density = 0.005
         self.mountain_ridge_length_range = (10, 15)
         self.mountain_ridge_deviation = 0.5
+        self.mountain_rough_radiation_probability = [0.01, 0.5, 0.75, 0.875, 0.875, 0.875, 0.5]
+        self.rough_rough_radiation_probability = [0, 0.5, 0.75, 0.875, 0.875, 0.875, 0.5]
+        self.rough_rough_radiation_repeats = 3
 
     def __call__(self):
+        print('Generating world map:')
+        
         result = self.initiate_hexagonal_shape()
         result = self.generate_altitude_from_noise(result)
-        #result = self.generate_mountain_tops(result)
-        result = self.generate_mountain_ridges(result)
+        result = self.generate_mountains(result)
+        result = self.generate_rough_terrain(result)
+        result = self.finalize_tiles(result)
+
+        print('Generation complete!')
+        return result
+
+    def finalize_tiles(self, tiles):
+        print('Finalizing tiles ...', end='\r')
         
-        for tile in result.values():
+        for tile in tiles.values():
             tile.setup()
 
-        return result
+        print('Finalizing tiles [DONE]')
+        return tiles
 
     def initiate_hexagonal_shape(self):
         '''
         Creates sand tiles put together in a hexagonal shape
         '''
+        print('Initiating map ...', end='\r')
+        
         def base_tile_constructor(coords: Coords, loop_coords):
             return Tile(coords, self.terrain_types['sand'])
         
-        return tile_list_to_tile_dict(
+        tiles = tile_list_to_tile_dict(
             hexagonal_loop(Coords(0, 0), self.radius,base_tile_constructor, True))
+        
+        print('Initiating map [DONE]')
+        return tiles
 
-    def generate_altitude_from_noise(self, result):
+    def generate_altitude_from_noise(self, tiles):
         '''
         Modifies existing tiles to have altitudes set according to 
         simplex noise
         '''
+        print('Generating heightmap ...', end='\r')
         opensimplex.seed(self.seed)
 
-        for tile in result.values():
+        for tile in tiles.values():
             samples = [c*self.altitude_density for c in tile.coords.center()]
             noise = np.clip(opensimplex.noise2(*samples), -1, 1)
             tile.altitude = int(round(noise * self.altitude_noise_amplitude))
 
-        while(self.find_eccentricites(result, self.altitude_max_difference)): pass
+        while(self.find_eccentricites(tiles, self.altitude_max_difference)): pass
                         
-        for tile in result.values():
-            for n in [result[coords]
+        for tile in tiles.values():
+            for n in [tiles[coords]
                       for coords in tile.coords.neighbours()
-                      if coords in result]:
+                      if coords in tiles]:
                 diff = tile.altitude - n.altitude
                 if abs(diff) > self.altitude_max_difference:
                     print('Altitude over limit!', diff, tile.coords)
         
-        return result
+        print('Generating heightmap [DONE]')
+        return tiles
 
-    def generate_mountain_tops(self, result):
-        for tile in result.values():
-            if tile.altitude > 2:
-                tile.terrain = self.terrain_types['rocky']
-
-        return result
-
-    def find_feasable_ridge_ends(self, result, mountain_occupied):
+    def find_feasable_ridge_ends(self, tiles, mountain_occupied):
 
         def mark_candidate(coords, loop_indices):
             if loop_indices[0] in range(
@@ -92,7 +105,7 @@ class StandardGenerator(WorldGenerator):
         
         start, end = None, None
         while start is None or end is None:
-            start = random.choice(list(result))
+            start = random.choice(list(tiles))
             if (start in mountain_occupied): continue
             
             candidates = hexagonal_loop(
@@ -100,23 +113,24 @@ class StandardGenerator(WorldGenerator):
                 mark_candidate, True)
             candidates = [c for c in candidates
                           if c is not None
-                          and c in result
-                          and result[c].terrain != 'rocky'
+                          and c in tiles
                           and c not in mountain_occupied]
 
             if len(candidates) == 0: continue
             end = random.choice(candidates)
+            for c in coords_in_between(start, end):
+                if c not in tiles or c in mountain_occupied:
+                    end = None
 
         return start, end
 
     
-    def find_feasable_ridge_chain(
-            self, result, mountain_occupied, start, end):
+    def find_feasable_ridge_chain(self, tiles, start, end):
         dist = distance(start, end)
         if dist == 1: return []
         middle = None
         while (middle is None
-               or middle not in result
+               or middle not in tiles
                or middle == start
                or middle == end):
             if dist == 2:
@@ -134,35 +148,99 @@ class StandardGenerator(WorldGenerator):
                 #print(mid_x, mid_y)
                 #print(start.center(), middle.center(), end.center())
 
-        ridge1 = self.find_feasable_ridge_chain(
-            result, mountain_occupied, start, middle)
-        ridge2 = self.find_feasable_ridge_chain(
-            result, mountain_occupied, middle, end)
+        ridge1 = self.find_feasable_ridge_chain(tiles, start, middle)
+        ridge2 = self.find_feasable_ridge_chain(tiles, middle, end)
         return ridge1 + [middle] + ridge2
+
+    def generate_mountains(self, tiles):
+        tiles, mountain_occupied = self.generate_mountain_ridges(tiles)
+        tiles = self.generate_mountain_bases(tiles, mountain_occupied)
+        
+        return tiles
                 
-    def generate_mountain_ridges(self, result):
+    def generate_mountain_ridges(self, tiles):
         '''
         Randomly creates non-overlaping mountain ridges of 
         a length within a preset range and changes tiles in 
         the way of the mountain ridge to be rocky and be higher
         '''
-        mountain_ridge_total = int(round(
-            self.mountain_ridge_density * len(result)))
-        print(mountain_ridge_total)
+        print('Generating mountains ridges ...', end='\r')
+        mountain_ridge_total = int(round(self.mountain_ridge_density * len(tiles)))
         mountain_occupied = set()
         for i in range(mountain_ridge_total):
-            start, end = self.find_feasable_ridge_ends(
-                result, mountain_occupied)
+            start, end = self.find_feasable_ridge_ends(tiles, mountain_occupied)
             chain = ([start]
-                     + self.find_feasable_ridge_chain(
-                         result, mountain_occupied, start, end)
+                     + self.find_feasable_ridge_chain(tiles, start, end)
                      + [end])
             for coords in chain:
                 if coords in mountain_occupied: continue
-                result[coords].terrain = self.terrain_types['rocky']
-                result[coords].altitude += 2
+                tiles[coords].terrain = self.terrain_types['rocky']
+                tiles[coords].altitude += 3
                 mountain_occupied.add(coords)
         
+        print('Generating mountain ridges [DONE]')
+        return tiles, mountain_occupied
+    
+    def generate_mountain_bases(self, tiles, mountain_occupied):
+        print('Generating mountain bases ...', end='\r')
+
+        def get_lower_adjacent(origins):
+            result = dict()
+            for position in origins:
+                radiated_altitude = tiles[position].altitude-2
+                for n in position.neighbours():
+                    if n not in tiles: continue
+                    if radiated_altitude <= tiles[n].altitude: continue
+                    if n in result and result[n] >= radiated_altitude: continue
+                    result[n] = radiated_altitude
+            return result
+        
+        current = get_lower_adjacent(mountain_occupied)
+        while len(current) > 0:
+            for position in current:
+                tiles[position].terrain = self.terrain_types['rocky']
+                tiles[position].altitude = current[position]
+            current = get_lower_adjacent(list(current))
+        
+        print('Generating mountain bases [DONE]')
+        return tiles
+
+    def generate_rough_terrain(self, tiles):
+        print('Generating rough terrain ...', end='\r')
+        
+        tiles = self.radiate_terrain(
+            tiles, self.terrain_types['sand'], self.terrain_types['rough'],
+            self.terrain_types['rocky'], self.mountain_rough_radiation_probability)
+        for _ in range(self.rough_rough_radiation_repeats):
+            tiles = self.radiate_terrain(
+                tiles, self.terrain_types['sand'], self.terrain_types['rough'],
+                self.terrain_types['rough'], self.rough_rough_radiation_probability)
+
+        print('Generating rough terrain [DONE]')
+        return tiles
+
+    def radiate_terrain(self, tiles, substract: TerrainType, product: TerrainType,
+                        catalizer: TerrainType, probabilities):
+
+        if catalizer == None: origins = list(tiles)
+        else: origins = [tile.coords for tile in tiles.values() if tile.terrain == catalizer]
+        candidates = StandardGenerator.get_adjacent(tiles, origins)
+        candidates = [c for c in candidates if tiles[c].terrain == substract]
+        candidates = {c: len(c.neighbours()) for c in candidates}
+        for coords in list(tiles):
+            if coords not in candidates: candidates[coords] = 0
+        chosen = [c for c in candidates if random.random() < probabilities[candidates[c]]]
+        for c in chosen: tiles[c].terrain = product
+
+        return tiles
+
+    @staticmethod
+    def get_adjacent(tiles, origins):
+        result = set()
+        for position in origins:
+            real_neighbours = [n for n in position.neighbours() if n in tiles]
+            result.update(real_neighbours)
+
         return result
     
     @staticmethod

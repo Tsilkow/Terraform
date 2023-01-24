@@ -3,6 +3,7 @@ from pyglet.math import Vec2
 
 import random
 
+from coords import *
 from tile import *
 from building import *
 from generator import *
@@ -12,7 +13,7 @@ RESOLUTION = (1200, 800)
 SCREEN_TITLE = 'Terraform'
 PATH_TO_ASSETS = 'assets/'
 CAMERA_SPEED = 10
-CAMERA_ZOOM = 0.1
+CURSOR_SPEED = 5
 
 
 class Game(arcade.Window):
@@ -20,8 +21,8 @@ class Game(arcade.Window):
         super().__init__(resolution[0], resolution[1], title)
 
         self.tile_sprites = [None] * len(SPRITE_SCALES)
-        self.cursor_front_sprite = None
-        self.cursor_back_sprite = None
+        self.cursor_tile_sprites = None
+        self.cursor_overlay_sprites = None
         
         self.left_pressed = False
         self.right_pressed = False
@@ -29,10 +30,19 @@ class Game(arcade.Window):
         self.down_pressed = False
         self.num_add_pressed = False
         self.num_subtract_pressed = False
+        self.q_pressed = False
+        self.w_pressed = False
+        self.e_pressed = False
+        self.a_pressed = False
+        self.s_pressed = False
+        self.d_pressed = False
 
         self.camera = arcade.Camera(RESOLUTION[0], RESOLUTION[1])
         self.camera_position = [0, 0]
         self.scale = 2
+        self.cursor_coords = Coords(0, 0)
+        self.cursor_can_move = True
+        self.cursor_timer = 0
 
         self.generator = None
         
@@ -59,10 +69,18 @@ class Game(arcade.Window):
             for tile in sorted(self.tiles.values(), key=lambda t: t.coords.priority()):
                 self.tile_sprites[i].append(tile.sprites[i])
 
-        self.cursor_front_sprites = [arcade.Sprite(PATH_TO_ASSETS+'cursor_front.png', scale)
-                                     for scale in SPRITE_SCALES]
-        self.cursor_back_sprites = [arcade.Sprite(PATH_TO_ASSETS+'cursor_back.png', scale)
+        self.cursor_tile_sprites = [arcade.Sprite(PATH_TO_ASSETS+'cursor.png', scale)
                                     for scale in SPRITE_SCALES]
+        self.cursor_overlay_sprites = [arcade.Sprite(PATH_TO_ASSETS+'cursor.png', scale)
+                                       for scale in SPRITE_SCALES]
+        for i, (cur_tile, cur_over) in enumerate(
+                zip(self.cursor_tile_sprites, self.cursor_overlay_sprites)):
+            cur_tile.center_x, cur_tile.center_y = self.tiles[self.cursor_coords].center_pixel(i)
+            cur_over.center_x, cur_over.center_y = self.tiles[self.cursor_coords].center_pixel(i)
+            cur_over.alpha = 128
+            visited_sprite_index = self.tile_sprites[i].index(
+                self.tiles[self.cursor_coords].sprites[i])
+            self.tile_sprites[i].insert(visited_sprite_index+1, cur_tile)
 
     def on_draw(self):
         self.clear()
@@ -70,6 +88,15 @@ class Game(arcade.Window):
         self.camera.use()
         
         self.tile_sprites[self.scale].draw()
+        self.cursor_overlay_sprites[self.scale].draw()
+
+    def on_update(self, delta_time):
+        """
+        All the logic to move, and the game logic goes here.
+        Normally, you'll call update() on the sprite lists that
+        need it.
+        """
+        
         
     def on_key_press(self, key, modifiers):
         """Called whenever a key is pressed. """
@@ -82,6 +109,18 @@ class Game(arcade.Window):
             self.left_pressed = True
         elif key == arcade.key.RIGHT:
             self.right_pressed = True
+        elif key == arcade.key.Q:
+            self.q_pressed = True
+        elif key == arcade.key.W:
+            self.w_pressed = True
+        elif key == arcade.key.E:
+            self.e_pressed = True
+        elif key == arcade.key.A:
+            self.a_pressed = True
+        elif key == arcade.key.S:
+            self.s_pressed = True
+        elif key == arcade.key.D:
+            self.d_pressed = True
 
     def on_key_release(self, key, modifiers):
         """Called when the user releases a key. """
@@ -98,6 +137,18 @@ class Game(arcade.Window):
             self.scale = min(self.scale+1, len(SPRITE_SCALES)-1)
         elif key == arcade.key.NUM_SUBTRACT:
             self.scale = max(self.scale-1, 0)
+        elif key == arcade.key.Q:
+            self.q_pressed = False
+        elif key == arcade.key.W:
+            self.w_pressed = False
+        elif key == arcade.key.E:
+            self.e_pressed = False
+        elif key == arcade.key.A:
+            self.a_pressed = False
+        elif key == arcade.key.S:
+            self.s_pressed = False
+        elif key == arcade.key.D:
+            self.d_pressed = False
 
     def on_update(self, delta_time):
         """
@@ -113,6 +164,25 @@ class Game(arcade.Window):
             self.camera_position[0] += -CAMERA_SPEED
         elif self.right_pressed and not self.left_pressed:
             self.camera_position[0] += CAMERA_SPEED
+
+        if self.cursor_can_move:
+            if self.q_pressed and not self.d_pressed:
+                self.update_cursor(5)
+            elif self.d_pressed and not self.q_pressed:
+                self.update_cursor(2)
+            if self.w_pressed and not self.s_pressed:
+                self.update_cursor(0)
+            elif self.s_pressed and not self.w_pressed:
+                self.update_cursor(3)
+            if self.e_pressed and not self.a_pressed:
+                self.update_cursor(1)
+            elif self.a_pressed and not self.e_pressed:
+                self.update_cursor(4)
+        else:
+            self.cursor_timer += 1
+            if self.cursor_timer >= CURSOR_SPEED:
+                self.cursor_can_move = True
+                self.cursor_timer = 0
             
         position = Vec2(self.camera_position[0] - self.width / 2,
                         self.camera_position[1] - self.height / 2)
@@ -121,6 +191,20 @@ class Game(arcade.Window):
 
         #self.camera.resize(RESOLUTION[0] * self.camera_zoom, RESOLUTION[1] * self.camera_zoom)
 
+    def update_cursor(self, direction: int):
+        if self.cursor_coords.neighbour(direction) not in self.tiles: return
+        self.cursor_coords = self.cursor_coords.neighbour(direction)
+        self.cursor_can_move = False
+        for i, (cur_tile, cur_over) in enumerate(
+                zip(self.cursor_tile_sprites, self.cursor_overlay_sprites)):
+            cur_tile.center_x, cur_tile.center_y = self.tiles[self.cursor_coords].center_pixel(i)
+            cur_over.center_x, cur_over.center_y = self.tiles[self.cursor_coords].center_pixel(i)
+            visited_sprite_index = self.tile_sprites[i].index(
+                self.tiles[self.cursor_coords].sprites[i])
+            self.tile_sprites[i].remove(cur_tile)
+            self.tile_sprites[i].insert(visited_sprite_index+1, cur_tile)
+            #self.tile_sprites[i].update()
+        
 
 def main():
     game = Game(RESOLUTION, SCREEN_TITLE)
