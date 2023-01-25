@@ -22,7 +22,7 @@ class StandardGenerator(WorldGenerator):
     '''
     def __init__(self, seed):
         super().__init__(seed)
-        self.radius = 100
+        self.radius = 10
         self.altitude_noise_amplitude = 2
         self.altitude_density = 0.1
         self.altitude_max_difference = 3
@@ -167,7 +167,7 @@ class StandardGenerator(WorldGenerator):
         a length within a preset range and changes tiles in 
         the way of the mountain ridge to be rocky and be higher
         '''
-        print('Generating mountains ridges ...', end='\r')
+        print('Generating mountain ridges ...', end='\r')
         mountain_ridge_total = int(round(self.mountain_ridge_density * len(tiles)))
         mountain_occupied = set()
         for i in range(mountain_ridge_total):

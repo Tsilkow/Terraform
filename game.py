@@ -44,6 +44,7 @@ class Game(arcade.Window):
         self.cursor_timer = 0
 
         self.generator = None
+        self.terraform = None
         
     def setup(self):
         self.world_generator = StandardGenerator(2137)
@@ -76,6 +77,8 @@ class Game(arcade.Window):
         self.camera.use()
         
         self.tile_sprites[self.scale].draw()
+        if self.terraform is not None:
+            self.terraform.draw(self.scale)
         self.cursor_overlay_sprites[self.scale].draw()
 
     def on_update(self, delta_time):
@@ -137,6 +140,13 @@ class Game(arcade.Window):
             self.s_pressed = False
         elif key == arcade.key.D:
             self.d_pressed = False
+        elif key == arcade.key.T:
+            self.terraform = Terraform()
+            self.terraform.setup(self.tiles, self.cursor_coords)
+            print('First setup done')
+        elif key == arcade.key.Y and self.terraform is not None:
+            self.terraform(self.tiles, self.cursor_coords)
+            self.terraform = None
 
     def on_update(self, delta_time):
         """
@@ -171,6 +181,9 @@ class Game(arcade.Window):
             if self.cursor_timer >= CURSOR_SPEED:
                 self.cursor_can_move = True
                 self.cursor_timer = 0
+
+        if self.terraform is not None:
+            self.terraform.setup(self.tiles, self.cursor_coords)
             
         position = Vec2(self.camera_position[0] - self.width / 2,
                         self.camera_position[1] - self.height / 2)

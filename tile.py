@@ -60,6 +60,15 @@ class Tile(object):
                                      for _ in range(3)]
             self.sprites[i].center_x, self.sprites[i].center_y = self.center_pixel(i)
 
+    def __copy__(self):
+        tmp = Tile(self.coords, self.terrain, self.altitude)
+        tmp.ore = self.ore
+        tmp.silica = self.silica
+        tmp.gold = self.gold
+        tmp.setup()
+        
+        return tmp
+
     def __str__(self):
         return f'{self.terrain} at {self.coords}'
 
