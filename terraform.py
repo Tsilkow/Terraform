@@ -11,8 +11,7 @@ class Terraform(object):
     
     def __init__(self):
         self.configuration = dict()
-        self.sprites = [None] * len(SPRITE_SCALES)
-        self.result_sprites = [None] * len(SPRITE_SCALES)
+        self.icon_sprites = [None] * len(SPRITE_SCALES)
 
         def choose_operation():
             if random.random() < 0.5: return None
@@ -21,29 +20,28 @@ class Terraform(object):
         shape = hexagonal_loop(Coords(0, 0), 1, lambda x, y: x, True)
         self.configuration = {pos: choose_operation() for pos in shape}
 
-    def setup(self, tiles, center: Coords):
-        result_tiles = dict()
-        for coords in self.configuration:
-            result_tiles[coords] = copy(tiles[center+coords])
-            if self.configuration[coords] is None: continue
-            self.configuration[coords](result_tiles[coords])
-            
-        for i, scale in enumerate(SPRITE_SCALES):
-            self.sprites[i] = arcade.SpriteList()
-            self.result_sprites[i] = arcade.SpriteList()
-            for coords in self.configuration:
-                self.result_sprites[i].append(result_tiles[coords].sprites[i])
+    def setup(self, tiles):
                 
-                if self.configuration[coords] is None: continue
-                tmp = arcade.Sprite(OPERATIONS[self.configuration[coords]], scale)
-                tmp.center_x, tmp.center_y = result_tiles[coords].center_pixel(i)
-                self.sprites[i].append(tmp)
+        def morph(center):
+            result_tiles = dict()
+            terrain_sprites = dict()
+            for coords in self.configuration:
+                result_tiles[coords+center] = copy(tiles[center+coords])
+            self(result_tiles, center)
+
+            for coords in self.configuration:
+                terrain_sprites[coords+center] = result_tiles[coords+center].sprites
+            return terrain_sprites
+
+        return morph
 
     def __call__(self, tiles, center: Coords):
-            for conf_pos, coords in [(conf, center+conf) for conf in self.configuration]:
-                if conf_pos is None: continue
-                operation = OPERATIONS[conf_pos]
-                if operation is not None: operation(tiles[coords])
+        for conf_pos, coords in [(conf, center+conf) for conf in self.configuration]:
+            #print(f'{center}: {conf_pos}, {coords}')
+            if conf_pos is None: continue
+            operation = self.configuration[conf_pos]
+            if operation is not None: operation(tiles[coords])
+            tiles[coords].setup()
 
     @staticmethod
     def explode(tile: Tile):
@@ -82,8 +80,7 @@ class Terraform(object):
         self.configuration = new_config
 
     def draw(self, scale):
-        self.result_sprites[scale].draw()
-        self.sprites[scale].draw()
+        self.icon_sprites[scale].draw()
 
 
 
