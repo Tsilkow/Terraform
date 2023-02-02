@@ -91,7 +91,7 @@ class Tilemap(object):
 
     def update_layer_at(self, coords: Coords, layer, sprites):
         assert coords in self.sprites_at
-        assert len(sprites) == len(SPRITE_SCALES)
+        assert sprites is None or len(sprites) == len(SPRITE_SCALES)
 
         if coords not in self.new_sprites_at:
             self.new_sprites_at[coords] = copy(self.sprites_at[coords])
@@ -130,10 +130,12 @@ class Tilemap(object):
             cur_tile.center_x, cur_tile.center_y = new_cursor_center
             cur_over.center_x, cur_over.center_y = new_cursor_center
 
-        self.update_layer_at(previous_coords, 'cursor', self.cursor_tile_sprites)
+        self.update_layer_at(previous_coords, 'cursor', None)
         self.update_layer_at(self.cursor_coords, 'cursor', self.cursor_tile_sprites)
         self.update_tied_to_cursor(previous_coords, True)
         self.update_tied_to_cursor(self.cursor_coords, False)
+
+        return True
 
     def update_tied_to_cursor(self, coords, erase=False):
         if self.tied_to_cursor is not None:
