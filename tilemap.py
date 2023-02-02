@@ -8,6 +8,15 @@ from tile import *
 
 @dataclass
 class SpriteAggregate:
+    """
+    Data class for storing layers of sprites (and their scaled versions) 
+    tied to a particular location. 
+    :tile: layer for terrain sprites
+    :projection: layer for terrain changes projections, including terraforms
+    :building: layer for building sprites
+    :cursor: layer for tilemap cursor sprite
+    :icon: layer for special icons
+    """
     tile: list[arcade.Sprite]
     projection: list[arcade.Sprite]
     building: list[arcade.Sprite]
@@ -24,10 +33,14 @@ class SpriteAggregate:
 
 
 class Tilemap(object):
+    """
+    Tilemap stores tile sprites and all sprites displayed on the tilemap, 
+    changes to said sprites, handles cursor and displaying everything tied
+    to cursor position.
+    """
     def __init__(self):
         self.sprites_at = dict()
         self.new_sprites_at = dict()
-        self.indices_for_coords = dict()
         self.sprite_lists = [arcade.SpriteList() for _ in SPRITE_SCALES]
         self.cursor_tile_sprites = [None] * len(SPRITE_SCALES)
         self.cursor_overlay_sprites = [None] * len(SPRITE_SCALES)
@@ -35,6 +48,11 @@ class Tilemap(object):
         self.tied_to_cursor = None
 
     def setup(self, tiles):
+        """
+        Total refresh of tilemap, resulting display is ground truth of what
+        should or shouldn't be displayed.
+        :tiles: tiles used to construct the tilemap
+        """
         for tile in sorted(tiles.values(), key=lambda t: t.coords.priority()):
             self.sprites_at[tile.coords] = SpriteAggregate(tile.sprites, None, None, None, None)
             for scale_index in range(len(SPRITE_SCALES)):
@@ -55,6 +73,10 @@ class Tilemap(object):
             self.sprite_lists[i].insert(visited_sprite_index+1, cur_tile)
 
     def update(self):
+        """
+        Method for applying changes in sprite position and configurations
+        declared. Should be called every frame.
+        """
         
         def remove_in_all_scales(sprites):
             print(sprites)
@@ -89,7 +111,13 @@ class Tilemap(object):
                     self.sprite_lists[i].insert(index, sprite_aggregate.tile[i])
         self.new_sprites_at.clear()
 
-    def update_layer_at(self, coords: Coords, layer, sprites):
+    def _set_sprite_at(self, coords: Coords, layer, sprites):
+        """
+        Internal method for placing new sprite at a specific position and layer.
+        :coords: target coordinates
+        :layer: target layer
+        :sprites: sprite and its scaled versions to set
+        """
         assert coords in self.sprites_at
         assert sprites is None or len(sprites) == len(SPRITE_SCALES)
 
@@ -109,7 +137,14 @@ class Tilemap(object):
         else:
             raise ValueError('invalid layer')
 
-    def apply_changes(self, layer, shape, erase=False):
+    def _set_sprite_at_shape(self, shape, layer, erase=False):
+        """
+        Internal method for placing multiple new sprites at a specific positions and layers.
+        :shape: dictionary with target coordinates as keys and sprites to set as values
+        :layer: target layer for all given sprites
+        :erase: flag for erasing instead of changing sprites at 
+            given coordinates and layer; defaults to False
+        """
         if shape is None: return
 
         for rel_coords, sprites in shape.items():
@@ -119,6 +154,11 @@ class Tilemap(object):
             else: self.update_layer_at(abs_coords, layer, sprites)
 
     def move_cursor(self, direction: int):
+        """
+        Method for moving the cursor.
+        :direction: direction of movement
+        :return: True if move was performed, False otherwise
+        """
         if self.cursor_coords.neighbour(direction) not in self.sprites_at: return False
         previous_coords = self.cursor_coords
         self.cursor_coords = self.cursor_coords.neighbour(direction)
@@ -137,20 +177,32 @@ class Tilemap(object):
 
         return True
 
-    def update_tied_to_cursor(self, coords, erase=False):
+    def _update_tied_to_cursor(self, coords, erase=False):
+        """
+        Internal method for updating function tied to cursor position
+        :coords: target coordinates to pass further
+        :erase: flag for erasing output at previous coordinates; defaults to False
+        """
+        print('I try to update')
         if self.tied_to_cursor is not None:
             print('I updated!:', erase)
             self.apply_changes('projection', self.tied_to_cursor(coords), erase)
 
     def tie_to_cursor(self, action):
+        """
+        Method for setting a function that will be called after every cursor move
+        :action: function to set
+        """
         self.tied_to_cursor = action
         self.update_tied_to_cursor(self.cursor_coords, False)
 
     def untie_from_cursor(self):
+        """Method for removing function set to follow the cursor"""
         self.tied_to_cursor = None
-        self.update_tied_to_cursor(self.cursor_coords)
+        self.update_tied_to_cursor(self.cursor_coords, True)
 
     def draw(self, scale_index):
+        """Function for drawing the tilemap"""
         self.sprite_lists[scale_index].draw()
         self.cursor_overlay_sprites[scale_index].draw()
         

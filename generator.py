@@ -17,9 +17,7 @@ class WorldGenerator(object):
 
 
 class StandardGenerator(WorldGenerator):
-    '''
-    Standard world generator: hexagonal shape, mountain ridges
-    '''
+    """Standard world generator: hexagonal shape, mountain ridges"""
     def __init__(self, seed):
         super().__init__(seed)
         self.radius = 10
@@ -58,9 +56,9 @@ class StandardGenerator(WorldGenerator):
         return tiles
 
     def initiate_hexagonal_shape(self):
-        '''
+        """
         Creates sand tiles put together in a hexagonal shape
-        '''
+        """
         print('Initiating map ...', end='\r')
         
         def base_tile_constructor(coords: Coords, loop_coords):
@@ -73,10 +71,10 @@ class StandardGenerator(WorldGenerator):
         return tiles
 
     def generate_altitude_from_noise(self, tiles):
-        '''
+        """
         Modifies existing tiles to have altitudes set according to 
         simplex noise
-        '''
+        """
         print('Generating heightmap ...', end='\r')
         opensimplex.seed(self.seed)
 
@@ -162,11 +160,11 @@ class StandardGenerator(WorldGenerator):
         return tiles
                 
     def generate_mountain_ridges(self, tiles):
-        '''
+        """
         Randomly creates non-overlaping mountain ridges of 
         a length within a preset range and changes tiles in 
         the way of the mountain ridge to be rocky and be higher
-        '''
+        """
         print('Generating mountain ridges ...', end='\r')
         mountain_ridge_total = int(round(self.mountain_ridge_density * len(tiles)))
         mountain_occupied = set()
