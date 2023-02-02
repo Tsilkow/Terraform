@@ -122,6 +122,7 @@ class Game(arcade.Window):
         elif key == arcade.key.Y and self.terraform is not None:
             self.tilemap.untie_from_cursor()
             self.terraform(self.tiles, self.tilemap.cursor_coords)
+            self.tilemap.setup(self.tiles)
             self.terraform = None
 
     def on_update(self, delta_time):

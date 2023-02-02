@@ -53,6 +53,9 @@ class Tilemap(object):
         should or shouldn't be displayed.
         :tiles: tiles used to construct the tilemap
         """
+        self.sprites_at = dict()
+        self.new_sprites_at = dict()
+        self.sprite_lists = [arcade.SpriteList() for _ in SPRITE_SCALES]
         for tile in sorted(tiles.values(), key=lambda t: t.coords.priority()):
             self.sprites_at[tile.coords] = SpriteAggregate(tile.sprites, None, None, None, None)
             for scale_index in range(len(SPRITE_SCALES)):
@@ -79,14 +82,14 @@ class Tilemap(object):
         """
         
         def remove_in_all_scales(sprites):
-            print(sprites)
+            #print(sprites)
             if sprites is None: return
             for i in range(len(SPRITE_SCALES)):
                 self.sprite_lists[i].remove(sprites[i])
 
         for coords in self.new_sprites_at:
-            print(coords, self.sprites_at[coords].projection,
-                  self.new_sprites_at[coords].projection)
+            #print(coords, self.sprites_at[coords].projection,
+            #      self.new_sprites_at[coords].projection)
             index = self.sprite_lists[0].index(self.sprites_at[coords].tile[0])
 
             remove_in_all_scales(self.sprites_at[coords].tile)
@@ -147,11 +150,12 @@ class Tilemap(object):
         """
         if shape is None: return
 
-        for rel_coords, sprites in shape.items():
-            abs_coords = self.cursor_coords + rel_coords
-            if abs_coords not in self.sprites_at: continue
-            if erase: self.update_layer_at(abs_coords, layer, None)
-            else: self.update_layer_at(abs_coords, layer, sprites)
+        print(*shape)
+
+        for coords, sprites in shape.items():
+            if coords not in self.sprites_at: continue
+            if erase: self._set_sprite_at(coords, layer, None)
+            else: self._set_sprite_at(coords, layer, sprites)
 
     def move_cursor(self, direction: int):
         """
@@ -170,10 +174,10 @@ class Tilemap(object):
             cur_tile.center_x, cur_tile.center_y = new_cursor_center
             cur_over.center_x, cur_over.center_y = new_cursor_center
 
-        self.update_layer_at(previous_coords, 'cursor', None)
-        self.update_layer_at(self.cursor_coords, 'cursor', self.cursor_tile_sprites)
-        self.update_tied_to_cursor(previous_coords, True)
-        self.update_tied_to_cursor(self.cursor_coords, False)
+        self._set_sprite_at(previous_coords, 'cursor', None)
+        self._set_sprite_at(self.cursor_coords, 'cursor', self.cursor_tile_sprites)
+        self._update_tied_to_cursor(previous_coords, True)
+        self._update_tied_to_cursor(self.cursor_coords, False)
 
         return True
 
@@ -186,7 +190,7 @@ class Tilemap(object):
         print('I try to update')
         if self.tied_to_cursor is not None:
             print('I updated!:', erase)
-            self.apply_changes('projection', self.tied_to_cursor(coords), erase)
+            self._set_sprite_at_shape(self.tied_to_cursor(coords), 'projection', erase)
 
     def tie_to_cursor(self, action):
         """
@@ -194,12 +198,12 @@ class Tilemap(object):
         :action: function to set
         """
         self.tied_to_cursor = action
-        self.update_tied_to_cursor(self.cursor_coords, False)
+        self._update_tied_to_cursor(self.cursor_coords, False)
 
     def untie_from_cursor(self):
         """Method for removing function set to follow the cursor"""
+        self._update_tied_to_cursor(self.cursor_coords, True)
         self.tied_to_cursor = None
-        self.update_tied_to_cursor(self.cursor_coords, True)
 
     def draw(self, scale_index):
         """Function for drawing the tilemap"""
