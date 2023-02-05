@@ -7,6 +7,7 @@ from coords import *
 from tile import *
 from tilemap import *
 from building import *
+from terraform import *
 from generator import *
 
 

@@ -25,11 +25,12 @@ class Terraform(object):
             morphed_tiles = dict()
             result_sprites = []
             for coords in self.configuration:
-                morphed_tiles[coords+center] = copy(tiles[center+coords])
+                if coords+center in tiles:
+                    morphed_tiles[coords+center] = copy(tiles[center+coords])
             self(morphed_tiles, center)
 
             for coords in self.configuration:
-                if self.configuration[coords] is None: continue
+                if self.configuration[coords] is None or coords+center not in tiles: continue
                 icon = []
                 for i, scale in enumerate(SPRITE_SCALES):
                     icon.append(arcade.Sprite(OPERATIONS[self.configuration[coords]], scale))
@@ -47,7 +48,7 @@ class Terraform(object):
 
     def __call__(self, tiles, center: Coords):
         for conf_pos, coords in [(conf, center+conf) for conf in self.configuration]:
-            if conf_pos is None: continue
+            if conf_pos is None or coords not in tiles: continue
             operation = self.configuration[conf_pos]
             if operation is not None:
                 operation(tiles[coords])
@@ -90,6 +91,7 @@ class Terraform(object):
     def rotate(self, rotation: int):
         rotation = rotation % 6
         new_config = dict()
+        new_config[Coords(0, 0)] = self.configuration[Coords(0, 0)]
         for origin, result in [(dir, (dir+rotation)%6) for dir in range(6)]:
             new_config[direction(result)] = self.configuration[direction(origin)]
         self.configuration = new_config

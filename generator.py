@@ -1,6 +1,5 @@
 import numpy as np
 from tile import *
-from terraform import *
 import opensimplex
 import random
 
@@ -33,9 +32,6 @@ class StandardGenerator(WorldGenerator):
 
     def __call__(self):
         print('Generating world map:')
-
-        terraform = Terraform()
-        print(terraform.configuration)
         
         result = self.initiate_hexagonal_shape()
         result = self.generate_altitude_from_noise(result)
