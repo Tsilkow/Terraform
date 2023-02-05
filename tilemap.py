@@ -178,6 +178,14 @@ class Tilemap(object):
 
         return True
 
+    def get_cursor_position(self, scale_index):
+        """
+        Method for retrieving pixel position of center of cursor on the tilemap
+        :scale_index: index of scale which use to retrive the center
+        """
+        return (self.cursor_overlay_sprites[scale_index].center_x,
+                self.cursor_overlay_sprites[scale_index].center_y)
+
     def _update_tied_to_cursor(self, coords, erase=False):
         """
         Internal method for updating function tied to cursor position

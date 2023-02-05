@@ -15,6 +15,7 @@ RESOLUTION = (1200, 800)
 SCREEN_TITLE = 'Terraform'
 CAMERA_SPEED = 10
 CURSOR_SPEED = 5
+CURSOR_BORDER = 100
 
 
 class Game(arcade.Window):
@@ -165,6 +166,16 @@ class Game(arcade.Window):
             if self.cursor_timer >= CURSOR_SPEED:
                 self.cursor_can_move = True
                 self.cursor_timer = 0
+
+        cursor_position = self.tilemap.get_cursor_position(self.scale)
+        self.camera_position[0] = \
+            min(self.camera_position[0], cursor_position[0]-CURSOR_BORDER+self.width/2)
+        self.camera_position[0] = \
+            max(self.camera_position[0], cursor_position[0]+CURSOR_BORDER-self.width/2)
+        self.camera_position[1] = \
+            min(self.camera_position[1], cursor_position[1]-CURSOR_BORDER+self.height/2)
+        self.camera_position[1] = \
+            max(self.camera_position[1], cursor_position[1]+CURSOR_BORDER-self.height/2)
             
         position = Vec2(self.camera_position[0] - self.width / 2,
                         self.camera_position[1] - self.height / 2)
