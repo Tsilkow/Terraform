@@ -82,20 +82,12 @@ class Tilemap(object):
         """
         
         def remove_in_all_scales(sprites):
-            #print(sprites)
             if sprites is None: return
             for i in range(len(SPRITE_SCALES)):
                 self.sprite_lists[i].remove(sprites[i])
 
         for coords in self.new_sprites_at:
-            #print(coords, self.sprites_at[coords].projection,
-            #      self.new_sprites_at[coords].projection)
             index = self.sprite_lists[0].index(self.sprites_at[coords].tile[0])
-
-            print('FROM')
-            print(self.sprites_at[coords].icon)
-            print('TO')
-            print(self.new_sprites_at[coords].icon)
 
             remove_in_all_scales(self.sprites_at[coords].tile)
             remove_in_all_scales(self.sprites_at[coords].projection)
@@ -192,9 +184,7 @@ class Tilemap(object):
         :coords: target coordinates to pass further
         :erase: flag for erasing output at previous coordinates; defaults to False
         """
-        print('I try to update')
         if self.tied_to_cursor is not None:
-            print('I\'m updating!:', erase)
             self._set_sprite_at_shape(self.tied_to_cursor(coords), erase)
 
     def tie_to_cursor(self, action):

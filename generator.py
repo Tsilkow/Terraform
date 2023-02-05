@@ -27,9 +27,9 @@ class StandardGenerator(WorldGenerator):
         self.mountain_ridge_density = 0.005
         self.mountain_ridge_length_range = (10, 15)
         self.mountain_ridge_deviation = 0.5
-        self.mountain_rough_radiation_probability = [0.01, 0.5, 0.75, 0.875, 0.875, 0.875, 0.5]
-        self.rough_rough_radiation_probability = [0, 0.5, 0.75, 0.875, 0.875, 0.875, 0.5]
-        self.rough_rough_radiation_repeats = 3
+        self.mountain_rocky_radiation_probability = [0.01, 0.5, 0.75, 0.875, 0.875, 0.875, 0.5]
+        self.rocky_rocky_radiation_probability = [0, 0.5, 0.75, 0.875, 0.875, 0.875, 0.5]
+        self.rocky_rocky_radiation_repeats = 3
 
     def __call__(self):
         print('Generating world map:')
@@ -40,7 +40,7 @@ class StandardGenerator(WorldGenerator):
         result = self.initiate_hexagonal_shape()
         result = self.generate_altitude_from_noise(result)
         result = self.generate_mountains(result)
-        result = self.generate_rough_terrain(result)
+        result = self.generate_rocky_terrain(result)
         result = self.finalize_tiles(result)
 
         print('Generation complete!')
@@ -163,7 +163,7 @@ class StandardGenerator(WorldGenerator):
         """
         Randomly creates non-overlaping mountain ridges of 
         a length within a preset range and changes tiles in 
-        the way of the mountain ridge to be rocky and be higher
+        the way of the mountain ridge to be mountain and be higher
         """
         print('Generating mountain ridges ...', end='\r')
         mountain_ridge_total = int(round(self.mountain_ridge_density * len(tiles)))
@@ -175,7 +175,7 @@ class StandardGenerator(WorldGenerator):
                      + [end])
             for coords in chain:
                 if coords in mountain_occupied: continue
-                tiles[coords].terrain = TERRAIN_TYPES['rocky']
+                tiles[coords].terrain = TERRAIN_TYPES['mountain']
                 tiles[coords].altitude += 3
                 mountain_occupied.add(coords)
         
@@ -199,25 +199,25 @@ class StandardGenerator(WorldGenerator):
         current = get_lower_adjacent(mountain_occupied)
         while len(current) > 0:
             for position in current:
-                tiles[position].terrain = TERRAIN_TYPES['rocky']
+                tiles[position].terrain = TERRAIN_TYPES['mountain']
                 tiles[position].altitude = current[position]
             current = get_lower_adjacent(list(current))
         
         print('Generating mountain bases [DONE]')
         return tiles
 
-    def generate_rough_terrain(self, tiles):
-        print('Generating rough terrain ...', end='\r')
+    def generate_rocky_terrain(self, tiles):
+        print('Generating rocky terrain ...', end='\r')
         
         tiles = self.radiate_terrain(
-            tiles, TERRAIN_TYPES['sand'], TERRAIN_TYPES['rough'],
-            TERRAIN_TYPES['rocky'], self.mountain_rough_radiation_probability)
-        for _ in range(self.rough_rough_radiation_repeats):
+            tiles, TERRAIN_TYPES['sand'], TERRAIN_TYPES['rocky'],
+            TERRAIN_TYPES['mountain'], self.mountain_rocky_radiation_probability)
+        for _ in range(self.rocky_rocky_radiation_repeats):
             tiles = self.radiate_terrain(
-                tiles, TERRAIN_TYPES['sand'], TERRAIN_TYPES['rough'],
-                TERRAIN_TYPES['rough'], self.rough_rough_radiation_probability)
+                tiles, TERRAIN_TYPES['sand'], TERRAIN_TYPES['rocky'],
+                TERRAIN_TYPES['rocky'], self.rocky_rocky_radiation_probability)
 
-        print('Generating rough terrain [DONE]')
+        print('Generating rocky terrain [DONE]')
         return tiles
 
     def radiate_terrain(self, tiles, substract: TerrainType, product: TerrainType,

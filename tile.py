@@ -27,10 +27,10 @@ class TerrainType(object):
 
     
 TERRAIN_TYPES = {
+    'mountain': TerrainType('Mountain', PATH_TO_ASSETS+'terrain_mountain.png'),
     'rocky': TerrainType('Rocky', PATH_TO_ASSETS+'terrain_rocky.png'),
-    'rough': TerrainType('Rough', PATH_TO_ASSETS+'terrain_rough.png'),
     'sand' : TerrainType('Sand' , PATH_TO_ASSETS+'terrain_sand.png' ),
-    'soil' : TerrainType('Soil' , PATH_TO_ASSETS+'terrain_soil.png' ),
+    'ground' : TerrainType('Ground' , PATH_TO_ASSETS+'terrain_ground.png' ),
     'water': TerrainType('Water', PATH_TO_ASSETS+'terrain_water.png'),
     'ice'  : TerrainType('Ice'  , PATH_TO_ASSETS+'terrain_ice.png'  )
 }

@@ -39,7 +39,6 @@ class Terraform(object):
                         
                 result_sprites.append(
                     (coords+center, 'projection', morphed_tiles[coords+center].sprites))
-                print('plz dont be none:', icon)
                 result_sprites.append(
                     (coords+center, 'icon', icon))
             return result_sprites
@@ -48,7 +47,6 @@ class Terraform(object):
 
     def __call__(self, tiles, center: Coords):
         for conf_pos, coords in [(conf, center+conf) for conf in self.configuration]:
-            #print(f'{center}: {conf_pos}, {coords}')
             if conf_pos is None: continue
             operation = self.configuration[conf_pos]
             if operation is not None:
@@ -57,31 +55,36 @@ class Terraform(object):
 
     @staticmethod
     def explode(tile: Tile):
-        if tile.terrain != TERRAIN_TYPES['rocky']:
+        if tile.terrain != TERRAIN_TYPES['mountain']:
             tile.altitude -= 1
-        tile.terrain = TERRAIN_TYPES['rough']
+        if tile.terrain in [TERRAIN_TYPES['water'],  TERRAIN_TYPES['ice']]:
+            tile.terrain = TERRAIN_TYPES['sand']
+        else: tile.terrain = TERRAIN_TYPES['rocky']
 
     @staticmethod
-    def bombard(tile: Tile):
+    def elevate(tile: Tile):
+        if tile.terrain == TERRAIN_TYPES['mountain']: return
         tile.altitude += 1
-        tile.terrain = TERRAIN_TYPES['rough']
+        if tile.terrain != TERRAIN_TYPES['water']: 
+            tile.terrain = TERRAIN_TYPES['sand']
 
     @staticmethod
-    def grind_up(tile: Tile):
-        if tile.terrain == TERRAIN_TYPES['rough']: tile.terrain = TERRAIN_TYPES['sand']
-        elif tile.terrain == TERRAIN_TYPES['sand']: tile.terrain = TERRAIN_TYPES['soil']
+    def pulverize(tile: Tile):
+        if tile.terrain == TERRAIN_TYPES['rocky']: tile.terrain = TERRAIN_TYPES['sand']
+        elif tile.terrain == TERRAIN_TYPES['sand']: tile.terrain = TERRAIN_TYPES['ground']
         
     @staticmethod
-    def burn(tile: Tile):
-        if tile.terrain == TERRAIN_TYPES['sand']: tile.terrain = TERRAIN_TYPES['rough']
-        elif tile.terrain == TERRAIN_TYPES['soil']: tile.terrain = TERRAIN_TYPES['sand']
-        elif tile.terrain == TERRAIN_TYPES['ice']:
-            tile.terrain = TERRAIN_TYPES['soil']
+    def melt(tile: Tile):
+        if tile.terrain == TERRAIN_TYPES['sand']: tile.terrain = TERRAIN_TYPES['rocky']
+        elif tile.terrain == TERRAIN_TYPES['ground']: tile.terrain = TERRAIN_TYPES['sand']
+        elif tile.terrain == TERRAIN_TYPES['ice']: tile.terrain = TERRAIN_TYPES['water']
+        elif tile.terrain == TERRAIN_TYPES['water']:
+            tile.terrain = TERRAIN_TYPES['sand']
             tile.altitude -= 1
 
     @staticmethod
-    def add_ice(tile: Tile):
-        if tile.terrain in [TERRAIN_TYPES['sand'], TERRAIN_TYPES['soil']]:
+    def comet(tile: Tile):
+        if tile.terrain in [TERRAIN_TYPES['sand'], TERRAIN_TYPES['ground']]:
             tile.terrain = TERRAIN_TYPES['ice']
 
     def rotate(self, rotation: int):
@@ -94,7 +97,7 @@ class Terraform(object):
 
 
 OPERATIONS = {Terraform.explode: PATH_TO_ASSETS+'terraform_explode.png',
-              Terraform.bombard: PATH_TO_ASSETS+'terraform_bombard.png',
-              Terraform.grind_up: PATH_TO_ASSETS+'terraform_grindup.png',
-              Terraform.burn: PATH_TO_ASSETS+'terraform_burn.png',
-              Terraform.add_ice: PATH_TO_ASSETS+'terraform_add_ice.png'}
+              Terraform.elevate: PATH_TO_ASSETS+'terraform_elevate.png',
+              Terraform.pulverize: PATH_TO_ASSETS+'terraform_pulverize.png',
+              Terraform.melt: PATH_TO_ASSETS+'terraform_melt.png',
+              Terraform.comet: PATH_TO_ASSETS+'terraform_comet.png'}
