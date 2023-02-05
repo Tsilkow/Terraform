@@ -92,16 +92,21 @@ class Tilemap(object):
             #      self.new_sprites_at[coords].projection)
             index = self.sprite_lists[0].index(self.sprites_at[coords].tile[0])
 
+            print('FROM')
+            print(self.sprites_at[coords].icon)
+            print('TO')
+            print(self.new_sprites_at[coords].icon)
+
             remove_in_all_scales(self.sprites_at[coords].tile)
             remove_in_all_scales(self.sprites_at[coords].projection)
             remove_in_all_scales(self.sprites_at[coords].building)
             remove_in_all_scales(self.sprites_at[coords].cursor)
             remove_in_all_scales(self.sprites_at[coords].icon)
-
-            self.sprites_at[coords] = self.new_sprites_at[coords]
             
+            self.sprites_at[coords] = self.new_sprites_at[coords]
+            sprite_aggregate = self.sprites_at[coords]
+            projection_here = False
             for i in range(len(SPRITE_SCALES)):
-                sprite_aggregate = self.sprites_at[coords]
                 if sprite_aggregate.icon is not None:
                     self.sprite_lists[i].insert(index, sprite_aggregate.icon[i])
                 if sprite_aggregate.cursor is not None:
@@ -109,8 +114,11 @@ class Tilemap(object):
                 if sprite_aggregate.building is not None:
                     self.sprite_lists[i].insert(index, sprite_aggregate.building[i])
                 if sprite_aggregate.projection is not None:
+                    projection_here = True
+                    sprite_aggregate.projection[i].color = (255, 255, 255)
                     self.sprite_lists[i].insert(index, sprite_aggregate.projection[i])
                 if sprite_aggregate.tile is not None:
+                    sprite_aggregate.tile[i].visible = not projection_here
                     self.sprite_lists[i].insert(index, sprite_aggregate.tile[i])
         self.new_sprites_at.clear()
 
@@ -140,19 +148,16 @@ class Tilemap(object):
         else:
             raise ValueError('invalid layer')
 
-    def _set_sprite_at_shape(self, shape, layer, erase=False):
+    def _set_sprite_at_shape(self, shape, erase=False):
         """
         Internal method for placing multiple new sprites at a specific positions and layers.
         :shape: dictionary with target coordinates as keys and sprites to set as values
-        :layer: target layer for all given sprites
         :erase: flag for erasing instead of changing sprites at 
             given coordinates and layer; defaults to False
         """
         if shape is None: return
 
-        print(*shape)
-
-        for coords, sprites in shape.items():
+        for coords, layer, sprites in shape:
             if coords not in self.sprites_at: continue
             if erase: self._set_sprite_at(coords, layer, None)
             else: self._set_sprite_at(coords, layer, sprites)
@@ -189,19 +194,21 @@ class Tilemap(object):
         """
         print('I try to update')
         if self.tied_to_cursor is not None:
-            print('I updated!:', erase)
-            self._set_sprite_at_shape(self.tied_to_cursor(coords), 'projection', erase)
+            print('I\'m updating!:', erase)
+            self._set_sprite_at_shape(self.tied_to_cursor(coords), erase)
 
     def tie_to_cursor(self, action):
         """
         Method for setting a function that will be called after every cursor move
         :action: function to set
         """
+        self.untie_from_cursor()
         self.tied_to_cursor = action
         self._update_tied_to_cursor(self.cursor_coords, False)
 
     def untie_from_cursor(self):
         """Method for removing function set to follow the cursor"""
+        if self.tied_to_cursor is None: return
         self._update_tied_to_cursor(self.cursor_coords, True)
         self.tied_to_cursor = None
 

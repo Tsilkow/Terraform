@@ -116,6 +116,11 @@ class Game(arcade.Window):
             self.s_pressed = False
         elif key == arcade.key.D:
             self.d_pressed = False
+        elif key == arcade.key.R:
+            if self.terraform is not None:
+                self.tilemap.untie_from_cursor()
+                self.terraform.rotate(1)
+                self.tilemap.tie_to_cursor(self.terraform.setup(self.tiles))
         elif key == arcade.key.T:
             self.terraform = Terraform()
             self.tilemap.tie_to_cursor(self.terraform.setup(self.tiles))
