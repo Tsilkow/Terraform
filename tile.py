@@ -1,7 +1,5 @@
 import arcade
 
-from enum import Enum
-
 from coords import *
 
 
@@ -20,7 +18,7 @@ PATH_TO_ASSETS = 'assets/'
 class TerrainType(object):
     def __init__(self, name, sprite_filenames):
         self.name = name
-        self.sprite_filenames = sprite_filenames
+        self.sprite_filename = sprite_filename
 
     def __str__(self):
         return self.name
@@ -55,7 +53,7 @@ class Tile(object):
 
     def setup(self):
         for i, scale in enumerate(SPRITE_SCALES):
-            self.sprites[i] = arcade.Sprite(self.terrain.sprite_filenames, scale)
+            self.sprites[i] = arcade.Sprite(self.terrain.sprite_filename, scale)
             self.sprites[i].color = [int(round(255 + (self.altitude-5)*(ALTITUDE_SHADING)))
                                      for _ in range(3)]
             self.sprites[i].center_x, self.sprites[i].center_y = self.center_pixel(i)
