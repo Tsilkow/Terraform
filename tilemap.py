@@ -69,6 +69,7 @@ class Tilemap(object):
     def __init__(self):
         self.sprites_at = dict()
         self.new_sprites_at = dict()
+        self.coords_at = [dict()] * len(SPRITE_SCALES)
         self.sprite_lists = [arcade.SpriteList() for _ in SPRITE_SCALES]
         self.cursor_tile_sprites = [None] * len(SPRITE_SCALES)
         self.cursor_overlay_sprites = [None] * len(SPRITE_SCALES)
@@ -88,6 +89,7 @@ class Tilemap(object):
             self.sprites_at[tile.coords] = SpriteAggregate({'tile': tile.terrain_sprites})
             for scale_index in range(len(SPRITE_SCALES)):
                 self.sprite_lists[scale_index].append(tile.terrain_sprites[scale_index])
+                self.coords_at[scale_index][tile.center_pixel(scale_index)] = tile.coords
                 
         for tile in sorted(tiles.values(), key=lambda t: t.coords.priority()):
             for i, sprites in enumerate(tile.tunnel_sprites):
@@ -118,21 +120,23 @@ class Tilemap(object):
                 if sprites is None: return
                 for i in range(len(SPRITE_SCALES)):
                     self.sprite_lists[i].remove(sprites[i])
+                    self.coords_at[i].pop((sprites[i].center_x, sprites[i].center_y), None)
 
-        def insert_in_all_scales(aggregate, index):
+        def insert_in_all_scales(aggregate, index, coords):
             for sprites in reversed(aggregate.values()):
                 if sprites is None: return
                 for i in range(len(SPRITE_SCALES)):
                     self.sprite_lists[i].insert(index, sprites[i])
+                    self.coords_at[i][(sprites[i].center_x, sprites[i].center_y)] = coords
 
         for coords in self.new_sprites_at:
             index = self.sprite_lists[0].index(self.sprites_at[coords]['tile'][0])
-
+            
             remove_in_all_scales(self.sprites_at[coords])
             
             self.sprites_at[coords] = self.new_sprites_at[coords]
 
-            insert_in_all_scales(self.sprites_at[coords], index)
+            insert_in_all_scales(self.sprites_at[coords], index, coords)
             
         self.new_sprites_at.clear()
 
@@ -168,15 +172,21 @@ class Tilemap(object):
             if erase: self._set_sprite_at(coords, layer, None)
             else: self._set_sprite_at(coords, layer, sprites)
 
-    def move_cursor(self, direction: int):
+    def move_cursor(self, *args):
         """
         Method for moving the cursor.
         :direction: direction of movement
         :return: True if move was performed, False otherwise
         """
-        if self.cursor_coords.neighbour(direction) not in self.sprites_at: return False
+        if len(args) == 0: return False
+        if isinstance(args[0], int): 
+            target = self.cursor_coords.neighbour(args[0])
+        elif isinstance(args[0], Coords):
+            target = args[0]
+        else: raise ValueError('invalid argument for move_cursor: ', args[0])
+        if target not in self.sprites_at: return False
         previous_coords = self.cursor_coords
-        self.cursor_coords = self.cursor_coords.neighbour(direction)
+        self.cursor_coords = target
         for scale_index, (cur_tile, cur_over) in enumerate(
                 zip(self.cursor_tile_sprites, self.cursor_overlay_sprites)):
             new_cursor_center = (
@@ -223,6 +233,27 @@ class Tilemap(object):
         if self.tied_to_cursor is None: return
         self._update_tied_to_cursor(self.cursor_coords, True)
         self.tied_to_cursor = None
+
+    def get_coords_at_point(self, point, scale):
+        # matches = arcade.get_sprites_at_point(point, self.sprite_lists[scale])
+        # candidates = []
+        # print('BESTEST OF MATCHEST')
+        # for sprite in matches:
+        #     candidates.append(pixel_to_coords((sprite.center_x, sprite.center_y), scale))
+        #     if tiles[candidates[-1]].altitude >= 5: candidates[-1].q -= 1
+        #     print(candidates[-1])
+        # if len(candidates) == 0: return None
+        # return sorted(candidates, key=lambda c: c.priority())[-1]
+        matches = arcade.get_sprites_at_point(point, self.sprite_lists[scale])
+        candidates = []
+        for sprite in matches:
+            if (sprite.center_x, sprite.center_y) not in self.coords_at[scale]: continue
+            candidate = self.coords_at[scale][(sprite.center_x, sprite.center_y)]
+            if candidate not in self.sprites_at: continue
+            candidates.append(candidate)
+        if len(candidates) == 0: return None
+        return sorted(candidates, key=lambda c: c.priority())[-1]
+        
 
     def draw(self, scale_index):
         """Function for drawing the tilemap"""

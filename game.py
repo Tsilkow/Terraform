@@ -2,6 +2,7 @@ import arcade
 from pyglet.math import Vec2
 
 import random
+from sys import getsizeof
 
 from coords import *
 from tile import *
@@ -21,10 +22,6 @@ CURSOR_BORDER = 100
 class Game(arcade.Window):
     def __init__(self, resolution, title):
         super().__init__(resolution[0], resolution[1], title)
-
-        self.tile_sprites = [None] * len(SPRITE_SCALES)
-        self.cursor_tile_sprites = None
-        self.cursor_overlay_sprites = None
         
         self.left_pressed = False
         self.right_pressed = False
@@ -55,10 +52,6 @@ class Game(arcade.Window):
         self.tiles = self.world_generator()
         self.tilemap = Tilemap()
         self.tilemap.setup(self.tiles)
-        #self.tiles = [Tile(Coords(0, 0), TERRAIN_TYPES['rocky'], 0),
-        #              Tile(direction(0), TERRAIN_TYPES['rough'], 0),
-        #              Tile(direction(2), TERRAIN_TYPES['sand'], 0),
-        #              Tile(direction(4), TERRAIN_TYPES['soil'], 0)]
 
     def on_draw(self):
         self.clear()
@@ -132,12 +125,27 @@ class Game(arcade.Window):
             self.tilemap.setup(self.tiles)
             self.terraform = None
 
+    def on_mouse_press(self, x, y, button, key_modifiers):
+        """ Called when the user presses a mouse button. """
+        x += self.camera_position[0] - self.width / 2
+        y += self.camera_position[1] - self.height / 2
+        self.tilemap.move_cursor(self.tilemap.get_coords_at_point((x, y), self.scale))
+
+    def on_mouse_release(self, x: float, y: float, button: int,
+                         modifiers: int):
+        """ Called when the user presses a mouse button. """
+        pass
+
+    def on_mouse_motion(self, x: float, y: float, dx: float, dy: float):
+        """ User moves mouse """
+
     def on_update(self, delta_time):
         """
         All the logic to move, and the game logic goes here.
         Normally, you'll call update() on the sprite lists that
         need it.
         """
+        
         if self.up_pressed and not self.down_pressed:
             self.camera_position[1] += CAMERA_SPEED
         elif self.down_pressed and not self.up_pressed:
@@ -190,6 +198,7 @@ class Game(arcade.Window):
 def main():
     game = Game(RESOLUTION, SCREEN_TITLE)
     game.setup()
+    print(getsizeof(game))
     arcade.run()
 
 

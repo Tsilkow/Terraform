@@ -67,6 +67,7 @@ class Tile(object):
         if self.tunnels:
             for i, n in enumerate(self.coords.neighbours()):
                 if n not in tiles: continue
+                if abs(self.altitude - tiles[n].altitude) > 1: continue
                 if tiles[n].tunnels: tunnel_connections.append(i)
             
         for i, scale in enumerate(SPRITE_SCALES):
@@ -112,6 +113,13 @@ class Tile(object):
                       * SPRITE_SCALES[scale_index]))
         return x, y
 
+
+def pixel_to_coords(pixel, scale):
+    center_x = int(round(pixel[0] / SPRITE_SCALES[scale] / (HEX_WIDTH - HEX_QUARTER) * 2))
+    center_y = int(round(
+        (pixel[1] + HEX_OFFSET//2)*2 / HEX_HEIGHT / SPRITE_SCALES[scale]))
+    return center_to_coords(center_x, center_y)
+    
 
 def tile_list_to_tile_dict(tile_list: list):
     tile_dict = dict()

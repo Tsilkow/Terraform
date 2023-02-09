@@ -4,9 +4,6 @@ import opensimplex
 import random
 
 
-ALTITUDE_DENSITY = 5
-
-
 class WorldGenerator(object):
     def __init__(self, seed):
         self.seed = seed
