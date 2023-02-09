@@ -98,7 +98,7 @@ def coords_in_between(a: Coords, b: Coords):
 
     def linear_interpolation(start: int, end: int, t: float):
         assert t >= 0, t <= 1
-        return start*(1-t) + end*t
+        return int(round(start*(1-t) + end*t))
 
     def coords_interpolation(start: Coords, end: Coords, t: float):
         return Coords(linear_interpolation(start.r, end.r, t),

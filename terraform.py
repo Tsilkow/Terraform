@@ -31,6 +31,7 @@ class Terraform(object):
 
             for coords in self.configuration:
                 if self.configuration[coords] is None or coords+center not in tiles: continue
+                morphed_tiles[coords+center].setup(tiles)
                 icon = []
                 for i, scale in enumerate(SPRITE_SCALES):
                     icon.append(arcade.Sprite(OPERATIONS[self.configuration[coords]], scale))
@@ -39,7 +40,7 @@ class Terraform(object):
                     icon[i].center_y = center_pixel[1]
                         
                 result_sprites.append(
-                    (coords+center, 'projection', morphed_tiles[coords+center].sprites))
+                    (coords+center, 'projection', morphed_tiles[coords+center].terrain_sprites))
                 result_sprites.append(
                     (coords+center, 'icon', icon))
             return result_sprites
@@ -52,7 +53,9 @@ class Terraform(object):
             operation = self.configuration[conf_pos]
             if operation is not None:
                 operation(tiles[coords])
-                tiles[coords].setup()
+                
+        for coords in [center+conf for conf in self.configuration]:
+            tiles[coords].setup(tiles)
 
     @staticmethod
     def explode(tile: Tile):

@@ -37,6 +37,7 @@ class StandardGenerator(WorldGenerator):
         result = self.generate_altitude_from_noise(result)
         result = self.generate_mountains(result)
         result = self.generate_rocky_terrain(result)
+        result = self.generate_tunnels(result)
         result = self.finalize_tiles(result)
 
         print('Generation complete!')
@@ -46,7 +47,7 @@ class StandardGenerator(WorldGenerator):
         print('Finalizing tiles ...', end='\r')
         
         for tile in tiles.values():
-            tile.setup()
+            tile.setup(tiles)
 
         print('Finalizing tiles [DONE]')
         return tiles
@@ -95,8 +96,7 @@ class StandardGenerator(WorldGenerator):
     def find_feasable_ridge_ends(self, tiles, mountain_occupied):
 
         def mark_candidate(coords, loop_indices):
-            if loop_indices[0] in range(
-                    *self.mountain_ridge_length_range):
+            if loop_indices[0] in range(*self.mountain_ridge_length_range):
                 return coords
             return None
         
@@ -214,6 +214,33 @@ class StandardGenerator(WorldGenerator):
                 TERRAIN_TYPES['rocky'], self.rocky_rocky_radiation_probability)
 
         print('Generating rocky terrain [DONE]')
+        return tiles
+
+    def generate_tunnels(self, tiles):
+
+        def mark_candidate(coords, loop_indices):
+            if loop_indices[0] in range(5):
+                return coords
+            return None
+        
+        print('Generating abandoned tunnels ...', end='\r')
+
+        start = None
+        end = None
+        while start is None or end is None:
+            start = random.choice(list(tiles))
+            end = candidates = hexagonal_loop(
+                start, self.mountain_ridge_length_range[1], mark_candidate, True)
+            candidates = [c for c in candidates if c is not None and c in tiles]
+
+            if len(candidates) == 0: continue
+            end = random.choice(candidates)
+
+        occupied = [start] + coords_in_between(start, end) + [end]
+        for c in occupied:
+            tiles[c].tunnels = True
+        
+        print('Generating abandoned tunnels [DONE]')
         return tiles
 
     def radiate_terrain(self, tiles, substract: TerrainType, product: TerrainType,
