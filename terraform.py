@@ -34,6 +34,7 @@ class Terraform(object):
                 morphed_tiles[coords+center].setup(tiles)
                 icon = []
                 for i, scale in enumerate(SPRITE_SCALES):
+                    morphed_tiles[coords+center].terrain_sprites[i].color = [255, 255, 255]
                     icon.append(arcade.Sprite(OPERATIONS[self.configuration[coords]], scale))
                     center_pixel = morphed_tiles[coords+center].center_pixel(i)
                     icon[i].center_x = center_pixel[0]

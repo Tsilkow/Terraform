@@ -8,6 +8,7 @@ from coords import *
 from tile import *
 from tilemap import *
 from building import *
+from colony import *
 from terraform import *
 from generator import *
 
@@ -44,8 +45,10 @@ class Game(arcade.Window):
         self.cursor_timer = 0
 
         self.generator = None
+        self.colony = None
         self.tilemap = None
-        self.terraform = None
+        self.cast_terraform = None
+        self.cast_building_type = None
         
     def setup(self):
         self.world_generator = StandardGenerator(2137)
@@ -112,18 +115,14 @@ class Game(arcade.Window):
         elif key == arcade.key.D:
             self.d_pressed = False
         elif key == arcade.key.R:
-            if self.terraform is not None:
-                self.tilemap.untie_from_cursor()
-                self.terraform.rotate(1)
-                self.tilemap.tie_to_cursor(self.terraform.setup(self.tiles))
+            self._rotate_terraform()
         elif key == arcade.key.T:
-            self.terraform = Terraform()
-            self.tilemap.tie_to_cursor(self.terraform.setup(self.tiles))
-        elif key == arcade.key.Y and self.terraform is not None:
-            self.tilemap.untie_from_cursor()
-            self.terraform(self.tiles, self.tilemap.cursor_coords)
-            self.tilemap.setup(self.tiles)
-            self.terraform = None
+            self._enter_terraform_mode(Terraform())
+        elif key == arcade.key.Y:
+            if self._execute_build(): pass
+            elif self._execute_terraform(): pass
+        elif key == arcade.key.B:
+            self._iterate_over_buildings()
 
     def on_mouse_press(self, x, y, button, key_modifiers):
         """ Called when the user presses a mouse button. """
@@ -138,6 +137,65 @@ class Game(arcade.Window):
 
     def on_mouse_motion(self, x: float, y: float, dx: float, dy: float):
         """ User moves mouse """
+
+    def _enter_building_mode(self, building_type: BuildingType):
+        self.cast_building_type = building_type
+        self.cast_terraform = None
+        self.tilemap.untie_from_cursor()
+        self.cast_building_type = building_type
+        self.tilemap.tie_to_cursor(project_building(self.tiles, building_type))
+
+    def _enter_terraform_mode(self, terraform=None):
+        self.cast_building_type = None
+        self.cast_terraform = terraform
+        self.tilemap.untie_from_cursor()
+        self.tilemap.tie_to_cursor(self.cast_terraform.setup(self.tiles))
+
+    def _execute_build(self):
+        if self.cast_building_type is None: return False
+        if self.tiles[self.tilemap.cursor_coords].building is not None: return False
+        if (self.tiles[self.tilemap.cursor_coords].terrain not in
+            self.cast_building_type.terrain_allowed): return False
+        
+        if self.colony is None:
+            if self.cast_building_type != BUILDING_TYPES['base']: return False
+            self.colony = Colony(self.tiles[self.tilemap.cursor_coords])
+            self.tilemap.setup(self.tiles)
+        else:
+            if self.cast_building_type == BUILDING_TYPES['base']: return False
+            if self.colony.add_building(self.tiles[self.tilemap.cursor_coords],
+                                        self.cast_building_type):
+                self.tilemap.setup(self.tiles)
+            else: return False
+            
+        self.tilemap.untie_from_cursor()
+        self.cast_building_type = None
+        return True
+
+    def _execute_terraform(self):
+        if self.cast_terraform is None: return False
+        self.tilemap.untie_from_cursor()
+        self.cast_terraform(self.tiles, self.tilemap.cursor_coords)
+        self.tilemap.setup(self.tiles)
+        self.cast_terraform = None
+        return True
+
+    def _iterate_over_buildings(self, forward: bool=True):
+        if self.cast_building_type is None: self._enter_building_mode(BUILDING_TYPES['base'])
+        elif self.cast_building_type not in BUILDING_TYPES.values(): pass
+        else:
+            keys = list(BUILDING_TYPES.keys())
+            curr_key = list(BUILDING_TYPES.values()).index(self.cast_building_type)
+            if forward: next_key = keys[curr_key+1-len(keys)]
+            else: next_key = keys[curr_key-1]
+            self._enter_building_mode(BUILDING_TYPES[next_key])
+
+    def _rotate_terraform(self):
+        if self.cast_terraform is None: return False
+        self.tilemap.untie_from_cursor()
+        self.cast_terraform.rotate(1)
+        self.tilemap.tie_to_cursor(self.cast_terraform.setup(self.tiles))
+        return True
 
     def on_update(self, delta_time):
         """

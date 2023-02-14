@@ -1,7 +1,5 @@
 import arcade
 
-from collections import namedtuple
-
 from tile import *
 
 
@@ -20,11 +18,36 @@ class Resources(dict):
         if 'electronics' not in self: self['electronics'] = 0
         if 'spices' not in self: self['spices'] = 0
 
+    def __add__(self, other):
+        result = Resources()
+        for res in self:
+            result[res] = self[res]
+
+        for res in other:
+            if res not in result: result[res] = 0
+            result[res] += other[res]
+        return result
+
+    def __sub__(self, other):
+        result = Resources()
+        for res in self:
+            result[res] = self[res]
+
+        for res in other:
+            if res not in result: result[res] = 0
+            result[res] -= other[res]
+        return result
+
+    def deficit(self):
+        for res in self:
+            if self[res] < 0: return True
+        return False
+
 
 class BuildingType(object):
     def __init__(self, name: str, sprite_filename: str, cost: Resources=None,
                  produces: Resources=None, consumes: Resources=None, housing: int=0,
-                 terrain_allowed=None, ore_requirement=None):
+                 transport_capacity: int=0, terrain_allowed=None, ore_requirement=None):
         self.name = name
         self.sprite_filename = sprite_filename
         if cost is None: self.cost = Resources()
@@ -34,8 +57,19 @@ class BuildingType(object):
         if consumes is None: self.consumes = Resources()
         else: self.consumes = consumes
         self.housing = housing
+        self.transport_capacity = transport_capacity
         self.terrain_allowed = terrain_allowed
         self.ore_requirement = ore_requirement
+        
+        if self.consumes['energy'] > 0: self.wires_needed = True
+        else: self.wires_needed = False
+        if self.consumes['water'] > 0: self.pipes_needed = True
+        else: self.pipes_needed = False
+        self.tunnels_needed = False
+        for res in ['food', 'concrete', 'steel', 'electronics', 'spices']:
+            if self.consumes[res] > 0:
+                self.tunnels_needed = True
+                break
 
     def __str__(self):
         return self.name
@@ -52,6 +86,11 @@ BUILDING_TYPES = {
         'Base', PATH_TO_ASSETS+'building_base.png',
         produces=Resources({'energy': 100, 'water': 10, 'food': 10, 'concrete': 10, 'steel': 10}),
         terrain_allowed=[TERRAIN_TYPES['sand'], TERRAIN_TYPES['ground']]),
+    'shuttle pad': BuildingType(
+        'Shuttle Pad', PATH_TO_ASSETS+'building_shuttle_pad.png',
+        cost=Resources({'concrete': 10}),
+        terrain_allowed=[TERRAIN_TYPES['sand'], TERRAIN_TYPES['ground']],
+        transport_capacity=10),
     'shelter': BuildingType(
         'Shelter', PATH_TO_ASSETS+'building_shelter.png',
         cost=Resources({'concrete': 10}),
@@ -62,11 +101,12 @@ BUILDING_TYPES = {
         cost=Resources({'steel': 10}),
         produces=Resources({'energy': 10}),
         terrain_allowed=[TERRAIN_TYPES['sand'], TERRAIN_TYPES['ground']]),
-    'well': BuildingType(
-        'Well', PATH_TO_ASSETS+'building_well.png',
+    'water pump': BuildingType(
+        'Water Pump', PATH_TO_ASSETS+'building_water_pump.png',
         cost=Resources({'concrete': 10, 'steel': 10}),
         produces=Resources({'water': 40}),
         consumes=Resources({'energy': 10}),
+        terrain_allowed=[TERRAIN_TYPES['sand'], TERRAIN_TYPES['ground']],
         ore_requirement='water'),
     'greenhouse': BuildingType(
         'Greenhouse', PATH_TO_ASSETS+'building_greenhouse.png',
@@ -91,17 +131,52 @@ BUILDING_TYPES = {
 
 
 class Building(object):
-    def __init__(self, type: BuildingType, tile: Tile, owner: None):
+    def __init__(self, building_type: BuildingType, tile: Tile, owner: None):
         self.building_type = building_type
         self.tile = tile
         self.owner = owner
-        self.sprite = None
+        self.active = True
+        self.sprites = None
 
     def setup(self):
+        self.sprites = []
         for i, scale in enumerate(SPRITE_SCALES):
-            self.sprites[i] = arcade.Sprite(self.building_type.sprite_filename, scale)
+            self.sprites.append(arcade.Sprite(self.building_type.sprite_filename, scale))
             self.sprites[i].center_x, self.sprites[i].center_y = self.tile.center_pixel(i)
+
+    def calculate_balance(self):
+        if self.active: return self.building_type.produces - self.building_type.consumes
+        else: return Resources()
+
+    def tick(self, budget):
+        self.active = True
+        if self.building_type.tunnels_needed and not self.tile.tunnels: self.active = False
+        if self.building_type.pipes_needed and not self.tile.pipes: self.active = False
+        if self.building_type.wires_needed and not self.tile.wires: self.active = False
+        if self.active:
+            balance = calculate_balance()
+            if (budget+balance).deficit(): self.active = False
+            else: budget += balance
+        return budget    
 
     def __repr__(self):
         return f'{self.building_type.name} at {self.tile.coordinates} | ' \
             f'{self.owner if self.owner is not None else "abandoned"} |'
+
+
+def project_building(tiles, building_type):
+
+    def build(center):
+        if center not in tiles: return None
+        invalid = False
+        if tiles[center].building is not None: invalid = True
+        if tiles[center].terrain not in building_type.terrain_allowed: invalid = True
+        sprites = []
+        for i, scale in enumerate(SPRITE_SCALES):
+            sprites.append(arcade.Sprite(building_type.sprite_filename, scale))
+            sprites[i].center_x, sprites[i].center_y = tiles[center].center_pixel(i)
+            if invalid: sprites[i].color = [255, 0, 0]
+            
+        return [(center, 'projection', sprites)]
+
+    return build

@@ -96,6 +96,8 @@ class Tilemap(object):
                 if sprites is None: continue
                 if i == 0: self._set_sprite_at(tile.coords, 'tunnels_singular', sprites)
                 else: self._set_sprite_at(tile.coords, f'tunnels_{i-1}', sprites)
+            if tile.building is not None:
+                self._set_sprite_at(tile.coords, 'building', tile.building.sprites)
 
         self.cursor_tile_sprites = [arcade.Sprite(PATH_TO_ASSETS+'cursor.png', scale)
                                     for scale in SPRITE_SCALES]
