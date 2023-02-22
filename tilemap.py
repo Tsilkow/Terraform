@@ -1,4 +1,5 @@
 import arcade
+from pyglet.math import Vec2
 
 from copy import copy
 from dataclasses import dataclass, make_dataclass
@@ -6,6 +7,10 @@ from itertools import product
 
 from tile import *
 
+
+CAMERA_SPEED = 10
+CURSOR_SPEED = 5
+CURSOR_BORDER = 100
 
 SPRITE_LAYERS = [
     'tile', 'ore', 'projection',
@@ -66,7 +71,7 @@ class Tilemap(object):
     changes to said sprites, handles cursor and displaying everything tied
     to cursor position.
     """
-    def __init__(self):
+    def __init__(self, view_size):
         self.sprites_at = dict()
         self.new_sprites_at = dict()
         self.coords_at = [dict()] * len(SPRITE_SCALES)
@@ -75,6 +80,10 @@ class Tilemap(object):
         self.cursor_overlay_sprites = [None] * len(SPRITE_SCALES)
         self.cursor_coords = Coords(0, 0)
         self.tied_to_cursor = None
+        self.camera = arcade.Camera(view_size[0], view_size[1])
+        self.camera_position = Vec2(0, 0)
+        self.camera.move_to(self.camera_position + Vec2(-view_size[0]/2, -view_size[1]/2), 1)
+        self.scale = 2
 
     def setup(self, tiles):
         """
@@ -174,6 +183,13 @@ class Tilemap(object):
             if erase: self._set_sprite_at(coords, layer, None)
             else: self._set_sprite_at(coords, layer, sprites)
 
+    def move_cursor_to_pixel(self, pixel: Vec2):
+        center_offset = Vec2(-self.camera.viewport_width/2, -self.camera.viewport_height/2)
+        pixel += self.camera_position + center_offset
+        coords = self.get_coords_at_point(pixel)
+        if coords is not None: return self.move_cursor(coords)
+        return False
+
     def move_cursor(self, *args):
         """
         Method for moving the cursor.
@@ -202,15 +218,32 @@ class Tilemap(object):
         self._update_tied_to_cursor(previous_coords, True)
         self._update_tied_to_cursor(self.cursor_coords, False)
 
+        self._move_camera_to_cursor()
+
         return True
 
-    def get_cursor_position(self, scale_index):
+    def _move_camera_to_cursor(self):
+        cursor_position = self.get_cursor_position()
+        center_offset = Vec2(-self.camera.viewport_width/2, -self.camera.viewport_height/2)
+        cursor_bound = Vec2(CURSOR_BORDER, CURSOR_BORDER) + center_offset
+        
+        self.camera_position.x = \
+            min(self.camera_position.x, cursor_position.x-cursor_bound.x)
+        self.camera_position.x = \
+            max(self.camera_position.x, cursor_position.x+cursor_bound.x)
+        self.camera_position.y = \
+            min(self.camera_position.y, cursor_position.y-cursor_bound.y)
+        self.camera_position.y = \
+            max(self.camera_position.y, cursor_position.y+cursor_bound.y)
+        
+        self.camera.move_to(self.camera_position + center_offset, 1)
+
+    def get_cursor_position(self):
         """
         Method for retrieving pixel position of center of cursor on the tilemap
-        :scale_index: index of scale which use to retrive the center
         """
-        return (self.cursor_overlay_sprites[scale_index].center_x,
-                self.cursor_overlay_sprites[scale_index].center_y)
+        return Vec2(self.cursor_overlay_sprites[self.scale].center_x,
+                    self.cursor_overlay_sprites[self.scale].center_y)
 
     def _update_tied_to_cursor(self, coords, erase=False):
         """
@@ -236,7 +269,7 @@ class Tilemap(object):
         self._update_tied_to_cursor(self.cursor_coords, True)
         self.tied_to_cursor = None
 
-    def get_coords_at_point(self, point, scale):
+    def get_coords_at_point(self, point: Vec2):
         # matches = arcade.get_sprites_at_point(point, self.sprite_lists[scale])
         # candidates = []
         # print('BESTEST OF MATCHEST')
@@ -246,19 +279,32 @@ class Tilemap(object):
         #     print(candidates[-1])
         # if len(candidates) == 0: return None
         # return sorted(candidates, key=lambda c: c.priority())[-1]
-        matches = arcade.get_sprites_at_point(point, self.sprite_lists[scale])
+        matches = arcade.get_sprites_at_point((point.x, point.y), self.sprite_lists[self.scale])
         candidates = []
         for sprite in matches:
-            if (sprite.center_x, sprite.center_y) not in self.coords_at[scale]: continue
-            candidate = self.coords_at[scale][(sprite.center_x, sprite.center_y)]
+            if (sprite.center_x, sprite.center_y) not in self.coords_at[self.scale]: continue
+            candidate = self.coords_at[self.scale][(sprite.center_x, sprite.center_y)]
             if candidate not in self.sprites_at: continue
             candidates.append(candidate)
         if len(candidates) == 0: return None
         return sorted(candidates, key=lambda c: c.priority())[-1]
-        
 
-    def draw(self, scale_index):
+    def zoom(self, towards: bool=True):
+        prev_scale = self.scale
+        if towards: self.scale = min(self.scale+1, len(SPRITE_SCALES)-1)
+        else: self.scale = max(self.scale-1, 0)
+        if self.scale == prev_scale: return False
+        return True
+
+    def move_camera(self, change):
+        self.camera_position += Vec2(change.x*CAMERA_SPEED, change.y*CAMERA_SPEED)
+        
+        center_offset = Vec2(-self.camera.viewport_width/2, -self.camera.viewport_height/2)
+        self.camera.move_to(self.camera_position + center_offset, 1)
+
+    def draw(self):
         """Function for drawing the tilemap"""
-        self.sprite_lists[scale_index].draw()
-        self.cursor_overlay_sprites[scale_index].draw()
+        self.camera.use()
+        self.sprite_lists[self.scale].draw()
+        self.cursor_overlay_sprites[self.scale].draw()
         

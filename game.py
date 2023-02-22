@@ -11,13 +11,11 @@ from building import *
 from colony import *
 from terraform import *
 from generator import *
+from interface import *
 
 
 RESOLUTION = (1200, 800)
 SCREEN_TITLE = 'Terraform'
-CAMERA_SPEED = 10
-CURSOR_SPEED = 5
-CURSOR_BORDER = 100
 
 
 class Game(arcade.Window):
@@ -37,13 +35,10 @@ class Game(arcade.Window):
         self.s_pressed = False
         self.d_pressed = False
 
-        self.camera = arcade.Camera(RESOLUTION[0], RESOLUTION[1])
-        self.camera_position = [0, 0]
-        self.scale = 2
-        self.cursor_coords = Coords(0, 0)
         self.cursor_can_move = True
         self.cursor_timer = 0
 
+        self.interface = None
         self.generator = None
         self.colony = None
         self.tilemap = None
@@ -53,15 +48,16 @@ class Game(arcade.Window):
     def setup(self):
         self.world_generator = StandardGenerator(2137)
         self.tiles = self.world_generator()
-        self.tilemap = Tilemap()
+        self.tilemap = Tilemap(RESOLUTION)
         self.tilemap.setup(self.tiles)
+        self.interface = Interface(Resources().keys())
 
     def on_draw(self):
         self.clear()
 
-        self.camera.use()
+        self.tilemap.draw()
 
-        self.tilemap.draw(self.scale)
+        self.interface.draw()
         
     def on_key_press(self, key, modifiers):
         """Called whenever a key is pressed. """
@@ -99,9 +95,9 @@ class Game(arcade.Window):
         elif key == arcade.key.RIGHT:
             self.right_pressed = False
         elif key == arcade.key.NUM_ADD:
-            self.scale = min(self.scale+1, len(SPRITE_SCALES)-1)
+            self.tilemap.zoom(True)
         elif key == arcade.key.NUM_SUBTRACT:
-            self.scale = max(self.scale-1, 0)
+            self.tilemap.zoom(False)
         elif key == arcade.key.Q:
             self.q_pressed = False
         elif key == arcade.key.W:
@@ -126,9 +122,7 @@ class Game(arcade.Window):
 
     def on_mouse_press(self, x, y, button, key_modifiers):
         """ Called when the user presses a mouse button. """
-        x += self.camera_position[0] - self.width / 2
-        y += self.camera_position[1] - self.height / 2
-        self.tilemap.move_cursor(self.tilemap.get_coords_at_point((x, y), self.scale))
+        self.tilemap.move_cursor_to_pixel(Vec2(x, y))
 
     def on_mouse_release(self, x: float, y: float, button: int,
                          modifiers: int):
@@ -203,15 +197,6 @@ class Game(arcade.Window):
         Normally, you'll call update() on the sprite lists that
         need it.
         """
-        
-        if self.up_pressed and not self.down_pressed:
-            self.camera_position[1] += CAMERA_SPEED
-        elif self.down_pressed and not self.up_pressed:
-            self.camera_position[1] += -CAMERA_SPEED
-        if self.left_pressed and not self.right_pressed:
-            self.camera_position[0] += -CAMERA_SPEED
-        elif self.right_pressed and not self.left_pressed:
-            self.camera_position[0] += CAMERA_SPEED
 
         if self.cursor_can_move:
             if self.q_pressed and not self.d_pressed:
@@ -232,25 +217,17 @@ class Game(arcade.Window):
             if self.cursor_timer >= CURSOR_SPEED:
                 self.cursor_can_move = True
                 self.cursor_timer = 0
-
-        cursor_position = self.tilemap.get_cursor_position(self.scale)
-        self.camera_position[0] = \
-            min(self.camera_position[0], cursor_position[0]-CURSOR_BORDER+self.width/2)
-        self.camera_position[0] = \
-            max(self.camera_position[0], cursor_position[0]+CURSOR_BORDER-self.width/2)
-        self.camera_position[1] = \
-            min(self.camera_position[1], cursor_position[1]-CURSOR_BORDER+self.height/2)
-        self.camera_position[1] = \
-            max(self.camera_position[1], cursor_position[1]+CURSOR_BORDER-self.height/2)
-            
-        position = Vec2(self.camera_position[0] - self.width / 2,
-                        self.camera_position[1] - self.height / 2)
-        
-        self.camera.move_to(position, 1)
+                
+        if self.up_pressed and not self.down_pressed:
+            self.tilemap.move_camera(Vec2(0, 1))
+        elif self.down_pressed and not self.up_pressed:
+            self.tilemap.move_camera(Vec2(0, -1))
+        if self.left_pressed and not self.right_pressed:
+            self.tilemap.move_camera(Vec2(-1, 0))
+        elif self.right_pressed and not self.left_pressed:
+            self.tilemap.move_camera(Vec2(1, 0))
 
         self.tilemap.update()
-
-        #self.camera.resize(RESOLUTION[0] * self.camera_zoom, RESOLUTION[1] * self.camera_zoom)
         
 
 def main():

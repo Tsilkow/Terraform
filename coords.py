@@ -106,6 +106,7 @@ def coords_in_between(a: Coords, b: Coords):
     
     result = []
     dist = distance(a, b)
+    if dist == 0: return [a]
     for d in range(dist+1):
         result.append(coords_interpolation(a, b, d/dist))
 
