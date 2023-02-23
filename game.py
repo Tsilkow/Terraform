@@ -147,19 +147,19 @@ class Game(arcade.Window):
         self.tilemap.untie_from_cursor()
         self.tilemap.tie_to_cursor(project_building(self.tiles, building_type))
 
-    def _enter_terraform_mode(self, terraform=None):
-        self.cast_terraform = terraform
-        self.cast_building_type = None
-        self.cast_infra_type = None
-        self.tilemap.untie_from_cursor()
-        self.tilemap.tie_to_cursor(self.cast_terraform.setup(self.tiles))
-
     def _enter_infra_building_mode(self, infra_type: str):
         self.cast_infra_type = infra_type
         self.cast_building_type = None
         self.cast_terraform = None
         self.tilemap.untie_from_cursor()
         self.tilemap.tie_to_cursor(project_infra(self.tiles, infra_type))
+
+    def _enter_terraform_mode(self, terraform=None):
+        self.cast_terraform = terraform
+        self.cast_building_type = None
+        self.cast_infra_type = None
+        self.tilemap.untie_from_cursor()
+        self.tilemap.tie_to_cursor(self.cast_terraform.setup(self.tiles))
 
     def _execute_build(self):
         if self.cast_building_type is None: return False
@@ -179,6 +179,20 @@ class Game(arcade.Window):
         self.tilemap.untie_from_cursor()
         self.cast_building_type = None
         return True
+    
+    def _execute_infra_build(self):
+        if self.cast_infra_type is None: return False
+        if not self.tilemap.tied_to_cursor_is_valid: return False
+        if self.colony is None: return False
+
+        if self.colony.add_infra(self.tiles[self.tilemap.cursor_coords], self.cast_infra_type):
+            self.tilemap.setup(self.tiles)
+        else: return False
+            
+        self.tilemap.untie_from_cursor()
+        self.tilemap.setup(self.tiles)
+        self.cast_infra_type = None
+        return True
 
     def _execute_terraform(self):
         if self.cast_terraform is None: return False
@@ -187,17 +201,6 @@ class Game(arcade.Window):
         self.cast_terraform(self.tiles, self.tilemap.cursor_coords)
         self.tilemap.setup(self.tiles)
         self.cast_terraform = None
-        return True
-    
-    def _execute_infra_build(self):
-        if self.cast_infra_type is None: return False
-        if not self.tilemap.tied_to_cursor_is_valid: return False
-
-        setattr(self.tiles[self.tilemap.cursor_coords], self.cast_infra_type, True)
-            
-        self.tilemap.untie_from_cursor()
-        self.tilemap.setup(self.tiles)
-        self.cast_infra_type = None
         return True
 
     def _iterate_over_buildings(self, forward: bool=True):

@@ -61,15 +61,19 @@ class BuildingType(object):
         self.terrain_allowed = terrain_allowed
         self.ore_requirement = ore_requirement
         
-        if self.consumes['energy'] > 0: self.wires_needed = True
+        if self.consumes['energy'] > 0 or self.produces['energy'] > 0 or self.housing > 0:
+            self.wires_needed = True
         else: self.wires_needed = False
-        if self.consumes['water'] > 0: self.pipes_needed = True
+        if self.consumes['water'] > 0 or self.produces['water'] > 0 or self.housing > 0:
+            self.pipes_needed = True
         else: self.pipes_needed = False
-        self.tunnels_needed = False
-        for res in ['food', 'concrete', 'steel', 'electronics', 'spices']:
-            if self.consumes[res] > 0:
-                self.tunnels_needed = True
-                break
+        if self.housing > 0: self.tunnels_needed = True
+        else:
+            self.tunnels_needed = False
+            for res in ['food', 'concrete', 'steel', 'electronics', 'spices']:
+                if self.consumes[res] > 0 or self.produces[res] > 0:
+                    self.tunnels_needed = True
+                    break
 
     def __str__(self):
         return self.name
@@ -129,10 +133,19 @@ BUILDING_TYPES = {
         ore_requirement='iron')
 }
 
-INFRA_TERRAIN_ALLOWED = {
-    'tunnels': [TERRAIN_TYPES['sand'], TERRAIN_TYPES['ground']],
-    'wires': [TERRAIN_TYPES['rocky'], TERRAIN_TYPES['sand'], TERRAIN_TYPES['ground'], TERRAIN_TYPES['water'], TERRAIN_TYPES['ice']],
-    'pipes': [TERRAIN_TYPES['rocky'], TERRAIN_TYPES['sand'], TERRAIN_TYPES['ground'], TERRAIN_TYPES['water'], TERRAIN_TYPES['ice']]
+INFRA_TYPES = {
+    'tunnels': {
+        'cost': Resources({'concrete': 5}),
+        'terrain_allowed': [TERRAIN_TYPES['sand'], TERRAIN_TYPES['ground']]
+    },
+    'wires': {
+        'cost': Resources({'concrete': 5}),
+        'terrain_allowed': [TERRAIN_TYPES['rocky'], TERRAIN_TYPES['sand'], TERRAIN_TYPES['ground'], TERRAIN_TYPES['water'], TERRAIN_TYPES['ice']]
+    },
+    'pipes': {
+        'cost': Resources({'concrete': 1}),
+        'terrain_allowed': [TERRAIN_TYPES['rocky'], TERRAIN_TYPES['sand'], TERRAIN_TYPES['ground'], TERRAIN_TYPES['water'], TERRAIN_TYPES['ice']]
+    }
 }
 
 
@@ -194,7 +207,7 @@ def project_infra(tiles, infra_type):
         result = []
         valid = True
         if getattr(tiles[center], infra_type) == True: valid = False
-        if tiles[center].terrain not in INFRA_TERRAIN_ALLOWED[infra_type]: valid = False
+        if tiles[center].terrain not in INFRA_TYPES[infra_type]['terrain_allowed']: valid = False
         if not valid: return result, valid
         
         tmp = tiles[center].get_infra_sprites(tiles, infra_type, True)
