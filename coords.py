@@ -92,7 +92,7 @@ def hexagonal_loop(start: Coords, radius: int, function: Callable,
             curr = curr.neighbour(side)
 
     if use_memory: return memory
-
+    
 
 def coords_in_between(a: Coords, b: Coords):
 

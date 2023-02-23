@@ -44,13 +44,14 @@ class Game(arcade.Window):
         self.tilemap = None
         self.cast_terraform = None
         self.cast_building_type = None
+        self.cast_infra_type = None
         
     def setup(self):
         self.world_generator = StandardGenerator(2137)
         self.tiles = self.world_generator()
         self.tilemap = Tilemap(RESOLUTION)
         self.tilemap.setup(self.tiles)
-        self.interface = Interface(Resources().keys())
+        self.interface = Interface(RESOLUTION, Resources().keys())
 
     def on_draw(self):
         self.clear()
@@ -117,8 +118,15 @@ class Game(arcade.Window):
         elif key == arcade.key.Y:
             if self._execute_build(): pass
             elif self._execute_terraform(): pass
+            elif self._execute_infra_build(): pass
         elif key == arcade.key.B:
             self._iterate_over_buildings()
+        elif key == arcade.key.F:
+            self._enter_infra_building_mode('tunnels')
+        elif key == arcade.key.G:
+            self._enter_infra_building_mode('wires')
+        elif key == arcade.key.H:
+            self._enter_infra_building_mode('pipes')
 
     def on_mouse_press(self, x, y, button, key_modifiers):
         """ Called when the user presses a mouse button. """
@@ -135,25 +143,31 @@ class Game(arcade.Window):
     def _enter_building_mode(self, building_type: BuildingType):
         self.cast_building_type = building_type
         self.cast_terraform = None
+        self.cast_infra_type = None
         self.tilemap.untie_from_cursor()
-        self.cast_building_type = building_type
         self.tilemap.tie_to_cursor(project_building(self.tiles, building_type))
 
     def _enter_terraform_mode(self, terraform=None):
-        self.cast_building_type = None
         self.cast_terraform = terraform
+        self.cast_building_type = None
+        self.cast_infra_type = None
         self.tilemap.untie_from_cursor()
         self.tilemap.tie_to_cursor(self.cast_terraform.setup(self.tiles))
 
+    def _enter_infra_building_mode(self, infra_type: str):
+        self.cast_infra_type = infra_type
+        self.cast_building_type = None
+        self.cast_terraform = None
+        self.tilemap.untie_from_cursor()
+        self.tilemap.tie_to_cursor(project_infra(self.tiles, infra_type))
+
     def _execute_build(self):
         if self.cast_building_type is None: return False
-        if self.tiles[self.tilemap.cursor_coords].building is not None: return False
-        if (self.tiles[self.tilemap.cursor_coords].terrain not in
-            self.cast_building_type.terrain_allowed): return False
+        if not self.tilemap.tied_to_cursor_is_valid: return False
         
         if self.colony is None:
             if self.cast_building_type != BUILDING_TYPES['base']: return False
-            self.colony = Colony(self.tiles[self.tilemap.cursor_coords])
+            self.colony = Colony(self.interface, self.tiles[self.tilemap.cursor_coords])
             self.tilemap.setup(self.tiles)
         else:
             if self.cast_building_type == BUILDING_TYPES['base']: return False
@@ -168,10 +182,22 @@ class Game(arcade.Window):
 
     def _execute_terraform(self):
         if self.cast_terraform is None: return False
+        if not self.tilemap.tied_to_cursor_is_valid: return False
         self.tilemap.untie_from_cursor()
         self.cast_terraform(self.tiles, self.tilemap.cursor_coords)
         self.tilemap.setup(self.tiles)
         self.cast_terraform = None
+        return True
+    
+    def _execute_infra_build(self):
+        if self.cast_infra_type is None: return False
+        if not self.tilemap.tied_to_cursor_is_valid: return False
+
+        setattr(self.tiles[self.tilemap.cursor_coords], self.cast_infra_type, True)
+            
+        self.tilemap.untie_from_cursor()
+        self.tilemap.setup(self.tiles)
+        self.cast_infra_type = None
         return True
 
     def _iterate_over_buildings(self, forward: bool=True):
@@ -233,7 +259,6 @@ class Game(arcade.Window):
 def main():
     game = Game(RESOLUTION, SCREEN_TITLE)
     game.setup()
-    print(getsizeof(game))
     arcade.run()
 
 

@@ -22,12 +22,13 @@ class Terraform(object):
     def setup(self, tiles):
                 
         def morph(center):
+            valid = False
             morphed_tiles = dict()
             result_sprites = []
             for coords in self.configuration:
                 if coords+center in tiles:
                     morphed_tiles[coords+center] = copy(tiles[center+coords])
-            self(morphed_tiles, center)
+            if self(morphed_tiles, center): valid = True
 
             for coords in self.configuration:
                 if self.configuration[coords] is None or coords+center not in tiles: continue
@@ -44,19 +45,23 @@ class Terraform(object):
                     (coords+center, 'projection', morphed_tiles[coords+center].terrain_sprites))
                 result_sprites.append(
                     (coords+center, 'icon', icon))
-            return result_sprites
+            return result_sprites, valid
 
         return morph
 
     def __call__(self, tiles, center: Coords):
+        valid = False
         for conf_pos, coords in [(conf, center+conf) for conf in self.configuration]:
             if conf_pos is None or coords not in tiles: continue
             operation = self.configuration[conf_pos]
             if operation is not None:
                 operation(tiles[coords])
+                valid = True
                 
         for coords in [center+conf for conf in self.configuration]:
             tiles[coords].setup(tiles)
+
+        return valid
 
     @staticmethod
     def explode(tile: Tile):
@@ -99,7 +104,6 @@ class Terraform(object):
         for origin, result in [(dir, (dir+rotation)%6) for dir in range(6)]:
             new_config[direction(result)] = self.configuration[direction(origin)]
         self.configuration = new_config
-
 
 
 OPERATIONS = {Terraform.explode: PATH_TO_ASSETS+'terraform_explode.png',

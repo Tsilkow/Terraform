@@ -80,6 +80,7 @@ class Tilemap(object):
         self.cursor_overlay_sprites = [None] * len(SPRITE_SCALES)
         self.cursor_coords = Coords(0, 0)
         self.tied_to_cursor = None
+        self.tied_to_cursor_is_valid = False
         self.camera = arcade.Camera(view_size[0], view_size[1])
         self.camera_position = Vec2(0, 0)
         self.camera.move_to(self.camera_position + Vec2(-view_size[0]/2, -view_size[1]/2), 1)
@@ -95,18 +96,7 @@ class Tilemap(object):
         self.new_sprites_at = dict()
         self.sprite_lists = [arcade.SpriteList() for _ in SPRITE_SCALES]
         for tile in sorted(tiles.values(), key=lambda t: t.coords.priority()):
-            self.sprites_at[tile.coords] = SpriteAggregate({'tile': tile.terrain_sprites})
-            for scale_index in range(len(SPRITE_SCALES)):
-                self.sprite_lists[scale_index].append(tile.terrain_sprites[scale_index])
-                self.coords_at[scale_index][tile.center_pixel(scale_index)] = tile.coords
-                
-        for tile in sorted(tiles.values(), key=lambda t: t.coords.priority()):
-            for i, sprites in enumerate(tile.tunnel_sprites):
-                if sprites is None: continue
-                if i == 0: self._set_sprite_at(tile.coords, 'tunnels_singular', sprites)
-                else: self._set_sprite_at(tile.coords, f'tunnels_{i-1}', sprites)
-            if tile.building is not None:
-                self._set_sprite_at(tile.coords, 'building', tile.building.sprites)
+            self.setup_tile(tile, tiles)
 
         self.cursor_tile_sprites = [arcade.Sprite(PATH_TO_ASSETS+'cursor.png', scale)
                                     for scale in SPRITE_SCALES]
@@ -119,6 +109,20 @@ class Tilemap(object):
             cur_over.center_x, cur_over.center_y = tiles[self.cursor_coords].center_pixel(i)
             cur_over.alpha = 128
         self._set_sprite_at(self.cursor_coords, 'cursor', self.cursor_tile_sprites)
+
+    def setup_tile(self, target, tiles):
+        target.setup(tiles)
+        self.sprites_at[target.coords] = SpriteAggregate({'tile': target.terrain_sprites})
+        for scale_index in range(len(SPRITE_SCALES)):
+            self.sprite_lists[scale_index].append(target.terrain_sprites[scale_index])
+            self.coords_at[scale_index][target.center_pixel(scale_index)] = target.coords
+        for infra in ['tunnels', 'pipes', 'wires']:
+            for i, sprites in enumerate(getattr(target, f'{infra}_sprites')):
+                if sprites is None: continue
+                if i == 0: self._set_sprite_at(target.coords, f'{infra}_singular', sprites)
+                else: self._set_sprite_at(target.coords, f'{infra}_{i-1}', sprites)
+        if target.building is not None:
+            self._set_sprite_at(target.coords, 'building', target.building.sprites)
 
     def update(self):
         """
@@ -252,7 +256,9 @@ class Tilemap(object):
         :erase: flag for erasing output at previous coordinates; defaults to False
         """
         if self.tied_to_cursor is not None:
-            self._set_sprite_at_shape(self.tied_to_cursor(coords), erase)
+            projection, self.tied_to_cursor_is_valid = self.tied_to_cursor(coords)
+            if erase: self.tied_to_cursor_is_valid = False
+            self._set_sprite_at_shape(projection, erase)
 
     def tie_to_cursor(self, action):
         """
@@ -306,5 +312,4 @@ class Tilemap(object):
         """Function for drawing the tilemap"""
         self.camera.use()
         self.sprite_lists[self.scale].draw()
-        self.cursor_overlay_sprites[self.scale].draw()
-        
+        self.cursor_overlay_sprites[self.scale].draw()        

@@ -34,14 +34,32 @@ TERRAIN_TYPES = {
 }
 
 
-TUNNEL_SPRITES = [
-    PATH_TO_ASSETS+'tunnels.png', 
-    PATH_TO_ASSETS+'tunnels_0.png', 
-    PATH_TO_ASSETS+'tunnels_1.png', 
-    PATH_TO_ASSETS+'tunnels_2.png', 
-    PATH_TO_ASSETS+'tunnels_3.png', 
-    PATH_TO_ASSETS+'tunnels_4.png', 
-    PATH_TO_ASSETS+'tunnels_5.png']
+INFRA_SPRITES = {
+    'tunnels': [
+        PATH_TO_ASSETS+'tunnels.png', 
+        PATH_TO_ASSETS+'tunnels_0.png', 
+        PATH_TO_ASSETS+'tunnels_1.png', 
+        PATH_TO_ASSETS+'tunnels_2.png', 
+        PATH_TO_ASSETS+'tunnels_3.png', 
+        PATH_TO_ASSETS+'tunnels_4.png', 
+        PATH_TO_ASSETS+'tunnels_5.png'],
+    'wires': [
+        PATH_TO_ASSETS+'wires.png', 
+        PATH_TO_ASSETS+'wires_0.png', 
+        PATH_TO_ASSETS+'wires_1.png', 
+        PATH_TO_ASSETS+'wires_2.png', 
+        PATH_TO_ASSETS+'wires_3.png', 
+        PATH_TO_ASSETS+'wires_4.png', 
+        PATH_TO_ASSETS+'wires_5.png'],
+    'pipes': [
+        PATH_TO_ASSETS+'pipes.png', 
+        PATH_TO_ASSETS+'pipes_0.png', 
+        PATH_TO_ASSETS+'pipes_1.png', 
+        PATH_TO_ASSETS+'pipes_2.png', 
+        PATH_TO_ASSETS+'pipes_3.png', 
+        PATH_TO_ASSETS+'pipes_4.png', 
+        PATH_TO_ASSETS+'pipes_5.png']
+}
     
 
 class Tile(object):
@@ -60,15 +78,11 @@ class Tile(object):
         self.gold = False
 
         self.terrain_sprites = [None]*len(SPRITE_SCALES)
-        self.tunnel_sprites = [None]*7
+        self.tunnels_sprites = [None]*7
+        self.wires_sprites = [None]*7
+        self.pipes_sprites = [None]*7
 
     def setup(self, tiles):
-        tunnel_connections = []
-        if self.tunnels:
-            for i, n in enumerate(self.coords.neighbours()):
-                if n not in tiles: continue
-                if abs(self.altitude - tiles[n].altitude) > 1: continue
-                if tiles[n].tunnels: tunnel_connections.append(i)
             
         for i, scale in enumerate(SPRITE_SCALES):
             self.terrain_sprites[i] = arcade.Sprite(self.terrain.sprite_filename, scale)
@@ -76,13 +90,38 @@ class Tile(object):
                 int(round(255 + (self.altitude-5)*(ALTITUDE_SHADING))) for _ in range(3)]
             self.terrain_sprites[i].center_x, self.terrain_sprites[i].center_y = \
                 self.center_pixel(i)
-            for j in tunnel_connections:
-                if i == 0: self.tunnel_sprites[j+1] = []
-                self.tunnel_sprites[j+1].append(arcade.Sprite(TUNNEL_SPRITES[j+1], scale))
-                self.tunnel_sprites[j+1][i].color = [
+
+        self.tunnels_sprites = self.get_infra_sprites(tiles, 'tunnels', self.tunnels)
+        self.wires_sprites = self.get_infra_sprites(tiles, 'wires', self.wires)
+        self.pipes_sprites = self.get_infra_sprites(tiles, 'pipes', self.pipes)
+
+    def get_infra_sprites(self, tiles, infra_type, infra_state):
+        
+        def with_same_infra_and_accessbile(tile: Tile):
+            if not getattr(tile, infra_type) or abs(tile.altitude - self.altitude) > 1:
+                return False
+            return True
+
+        result = [None]*7
+        connections = []
+        if infra_state:
+            connections = get_neighbours_that(tiles, self.coords, with_same_infra_and_accessbile)
+
+        for i, scale in enumerate(SPRITE_SCALES):
+            if len(connections) == 0 and infra_state:
+                if i == 0: result[0] = []
+                result[0].append(arcade.Sprite(INFRA_SPRITES[infra_type][0], scale))
+                result[0][i].color = [
                     int(round(255 + (self.altitude-5)*(ALTITUDE_SHADING))) for _ in range(3)]
-                self.tunnel_sprites[j+1][i].center_x, self.tunnel_sprites[j+1][i].center_y = \
-                    self.center_pixel(i)
+                result[0][i].center_x, result[0][i].center_y = self.center_pixel(i)
+            for j in connections:
+                if i == 0: result[j+1] = []
+                result[j+1].append(arcade.Sprite(INFRA_SPRITES[infra_type][j+1], scale))
+                result[j+1][i].color = [
+                    int(round(255 + (self.altitude-5)*(ALTITUDE_SHADING))) for _ in range(3)]
+                result[j+1][i].center_x, result[j+1][i].center_y = self.center_pixel(i)
+
+        return result
 
     def __copy__(self):
         tmp = Tile(self.coords, self.terrain, self.altitude)
@@ -127,3 +166,12 @@ def tile_list_to_tile_dict(tile_list: list):
         tile_dict[tile.coords] = tile
 
     return tile_dict
+
+
+def get_neighbours_that(tiles: dict, start: Coords, evaluation):
+    result = []
+    for i, n in enumerate(start.neighbours()):
+        if n not in tiles: continue
+        if evaluation(tiles[n]): result.append(i)
+    return result
+

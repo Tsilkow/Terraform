@@ -129,6 +129,12 @@ BUILDING_TYPES = {
         ore_requirement='iron')
 }
 
+INFRA_TERRAIN_ALLOWED = {
+    'tunnels': [TERRAIN_TYPES['sand'], TERRAIN_TYPES['ground']],
+    'wires': [TERRAIN_TYPES['rocky'], TERRAIN_TYPES['sand'], TERRAIN_TYPES['ground'], TERRAIN_TYPES['water'], TERRAIN_TYPES['ice']],
+    'pipes': [TERRAIN_TYPES['rocky'], TERRAIN_TYPES['sand'], TERRAIN_TYPES['ground'], TERRAIN_TYPES['water'], TERRAIN_TYPES['ice']]
+}
+
 
 class Building(object):
     def __init__(self, building_type: BuildingType, tile: Tile, owner: None):
@@ -168,15 +174,36 @@ def project_building(tiles, building_type):
 
     def build(center):
         if center not in tiles: return None
-        invalid = False
-        if tiles[center].building is not None: invalid = True
-        if tiles[center].terrain not in building_type.terrain_allowed: invalid = True
+        valid = True
+        if tiles[center].building is not None: valid = False
+        if tiles[center].terrain not in building_type.terrain_allowed: valid = False
         sprites = []
         for i, scale in enumerate(SPRITE_SCALES):
             sprites.append(arcade.Sprite(building_type.sprite_filename, scale))
             sprites[i].center_x, sprites[i].center_y = tiles[center].center_pixel(i)
-            if invalid: sprites[i].color = [255, 0, 0]
+            if not valid: sprites[i].color = [255, 0, 0]
             
-        return [(center, 'projection', sprites)]
+        return [(center, 'projection', sprites)], valid
+
+    return build
+
+def project_infra(tiles, infra_type):
+
+    def build(center):
+        if center not in tiles: return None
+        result = []
+        valid = True
+        if getattr(tiles[center], infra_type) == True: valid = False
+        if tiles[center].terrain not in INFRA_TERRAIN_ALLOWED[infra_type]: valid = False
+        if not valid: return result, valid
+        
+        tmp = tiles[center].get_infra_sprites(tiles, infra_type, True)
+
+        for i, t in enumerate(tmp):
+            if t is None: continue
+            if i == 0: result.append((center, f'{infra_type}_singular', t))
+            else: result.append((center, f'{infra_type}_{i-1}', t))
+        
+        return result, valid
 
     return build
