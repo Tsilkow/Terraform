@@ -240,7 +240,7 @@ class Tilemap(object):
         self.camera_position.y = \
             max(self.camera_position.y, cursor_position.y+cursor_bound.y)
         
-        self.camera.move_to(self.camera_position + center_offset, 1)
+        self.camera.move_to(self.camera_position + center_offset, 0.5)
 
     def get_cursor_position(self):
         """

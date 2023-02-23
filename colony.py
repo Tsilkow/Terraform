@@ -12,11 +12,15 @@ class Colony(object):
         self.buildings = dict()
         self.resources = resources
         self.resource_balance = Resources()
+        self.population = 0
+        self.workers = 0
+        self.housing = 0
         self.add_building(base, BUILDING_TYPES['base'])
 
     def update(self):
         for res in self.resources.keys():
             self.interface.update_resource(res, self.resources[res], self.resource_balance[res])
+        self.interface.update_population(self.population, self.workers, self.housing)
 
     def _add_tile(self, tile: Tile):
         if tile.coords in self.tiles: return False
@@ -48,18 +52,20 @@ class Colony(object):
         for infra in infra_needed:
             setattr(tile, infra, True)
         self.resources -= total_cost
-        self.calculate_balance()
+        self.project_tick()
         
         return True
 
-    def calculate_balance(self):
+    def project_tick(self):
+        self.workers = self.population
+        self.housing = 0
         self.resource_balance = Resources()
         for b in self.buildings.values():
-            self.resource_balance += b.calculate_balance()
+            self.resource_balance, self.workers, self.housing = \
+                b.tick(self.resource_balance, self.workers, self.housing)
         self.update()
 
     def tick(self):
-        for b in self.buildings:
-            self.resources = b.tick(self.resources)
-        self.update()
+        self.project_tick()
+        self.resources -= self.resource_balance
         

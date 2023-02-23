@@ -46,8 +46,9 @@ class Resources(dict):
 
 class BuildingType(object):
     def __init__(self, name: str, sprite_filename: str, cost: Resources=None,
-                 produces: Resources=None, consumes: Resources=None, housing: int=0,
-                 transport_capacity: int=0, terrain_allowed=None, ore_requirement=None):
+                 produces: Resources=None, consumes: Resources=None, workers: int=0,
+                 housing: int=0, transport_capacity: int=0, terrain_allowed=None,
+                 ore_requirement=None):
         self.name = name
         self.sprite_filename = sprite_filename
         if cost is None: self.cost = Resources()
@@ -56,6 +57,7 @@ class BuildingType(object):
         else: self.produces = produces
         if consumes is None: self.consumes = Resources()
         else: self.consumes = consumes
+        self.workers = workers
         self.housing = housing
         self.transport_capacity = transport_capacity
         self.terrain_allowed = terrain_allowed
@@ -117,19 +119,22 @@ BUILDING_TYPES = {
         cost=Resources({'concrete': 20, 'steel': 5}),
         produces=Resources({'food': 10}),
         consumes=Resources({'energy': 5, 'water': 15}),
-        terrain_allowed=[TERRAIN_TYPES['ground']]),
+        terrain_allowed=[TERRAIN_TYPES['ground']],
+        workers=1),
     'concrete plant': BuildingType(
         'Concrete Plant', PATH_TO_ASSETS+'building_concrete_plant.png',
         cost=Resources({'concrete': 20, 'steel': 5}),
         produces=Resources({'concrete': 30}),
         consumes=Resources({'energy': 10}),
-        terrain_allowed=[TERRAIN_TYPES['sand']]),
+        terrain_allowed=[TERRAIN_TYPES['sand']],
+        workers=1),
     'steel foundry': BuildingType(
         'Steel Foundry', PATH_TO_ASSETS+'building_steel_foundry.png',
         cost=Resources({'concrete': 30, 'steel': 20}),
         produces=Resources({'concrete': 20}),
         consumes=Resources({'energy': 20}),
         terrain_allowed=[TERRAIN_TYPES['sand'], TERRAIN_TYPES['ground']],
+        workers=1,
         ore_requirement='iron')
 }
 
@@ -163,20 +168,22 @@ class Building(object):
             self.sprites.append(arcade.Sprite(self.building_type.sprite_filename, scale))
             self.sprites[i].center_x, self.sprites[i].center_y = self.tile.center_pixel(i)
 
-    def calculate_balance(self):
-        if self.active: return self.building_type.produces - self.building_type.consumes
-        else: return Resources()
-
-    def tick(self, budget):
+    def check(self, budget, workers):
         self.active = True
-        if self.building_type.tunnels_needed and not self.tile.tunnels: self.active = False
-        if self.building_type.pipes_needed and not self.tile.pipes: self.active = False
-        if self.building_type.wires_needed and not self.tile.wires: self.active = False
-        if self.active:
-            balance = calculate_balance()
-            if (budget+balance).deficit(): self.active = False
-            else: budget += balance
-        return budget    
+        if ((self.building_type.tunnels_needed and not self.tile.tunnels) or
+            (self.building_type.pipes_needed and not self.tile.pipes) or
+            (self.building_type.wires_needed and not self.tile.wires) or
+            (budget + self.building_type.produces - self.building_type.consumes).deficit() or
+            workers - self.building_type.workers < 0):
+                self.active = False
+        return self.active
+
+    def tick(self, budget, workers, housing):
+        if self.check(budget, workers):
+            budget += self.building_type.produces - self.building_type.consumes
+            workers -= self.building_type.workers
+            housing += self.building_type.housing
+        return (budget, workers, housing)
 
     def __repr__(self):
         return f'{self.building_type.name} at {self.tile.coordinates} | ' \
